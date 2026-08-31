@@ -1,4 +1,4 @@
-﻿//! 配置持久化：全局 `setting.json` + 每猫 `cats/<id>.json` + 头像 `avatars/<id>.png`。
+//! 配置持久化：全局 `setting.json` + 每猫 `cats/<id>.json` + 头像 `avatars/<id>.png`。
 //!
 //! 数据分层：
 //! - 全局文件存**身份档案**（每猫 name/birthday/gender/tags/description）+ activeCatId

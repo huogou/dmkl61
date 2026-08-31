@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="basic-settings">
     <!-- 顶部工具条 -->
     <SettingsHeader title="基础设置">

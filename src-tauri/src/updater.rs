@@ -1,4 +1,4 @@
-﻿//! dmkl61 热更新：拉 version.json（三源 fallback）、流式下载新 exe（进度事件）、
+//! dmkl61 热更新：拉 version.json（三源 fallback）、流式下载新 exe（进度事件）、
 //! sha256 校验、Windows 改名腾位自替换、启动清理残留旧 exe。
 //!
 //! 下载源地址由 `manifest_urls()` / `exe_urls()` 按优先级提供（Gitee → GitHub）。

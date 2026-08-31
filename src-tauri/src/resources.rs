@@ -1,4 +1,4 @@
-﻿//! 外置资源：资源根定位与持久化、扫描帧、manifest 读写、目录树列举。
+//! 外置资源：资源根定位与持久化、扫描帧、manifest 读写、目录树列举。
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
