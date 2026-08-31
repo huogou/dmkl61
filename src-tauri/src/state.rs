@@ -1,0 +1,51 @@
+use std::sync::Mutex;
+use std::time::Instant;
+
+use crate::updater::CheckResult;
+
+/// 下载状态快照，供设置窗口重开时恢复，也供小猫窗口判断是否要提示安装。
+#[derive(Clone, Debug, Default, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadState {
+    pub is_downloading: bool,
+    pub download_id: u64,
+    pub progress: u8,
+    pub downloaded_path: Option<String>,
+    pub latest_version: Option<String>,
+}
+
+/// Shared app state. `scale` mirrors the in-window size slider so the gaze and
+/// clamp logic know the cat's real on-screen size. The window itself is now
+/// **dynamic** — `geometry::window_size_for` sizes it for the current cat plus
+/// menu/bubble reserves, and `pet_set_content_scale` re-anchors it to the cat
+/// foot whenever the slider moves (the sprite no longer just scales inside a
+/// fixed box).
+///
+/// `head_offset` stores the ratio of the head-centre offset to the sprite
+/// diameter, calibrated by the user so the dead-zone tracks the actual head.
+///
+/// `pending_tab` stores the tab to navigate to when settings window opens.
+///
+/// `settings_size` stores the last logical size (width, height) of the settings
+/// window so it can be restored on reopen.
+///
+/// `download` 持久化更新下载状态，使设置窗口关闭后仍可后台下载，重开后恢复。
+///
+/// `last_check` / `last_checked_at` 是后台轮询更新检查的共享缓存：小猫窗口和设置
+/// 窗口都只被动读它（`updater::pet_update_last_result`），不再各自发请求。
+///
+/// `monitor_bounds` 缓存所有显示器并集的边界，供高频 clamp / 行走边界查询复用。
+pub struct PetState {
+    pub scale: Mutex<f64>,
+    pub head_offset: Mutex<(f64, f64)>,
+    pub tray_icon: Mutex<Option<tauri::tray::TrayIconId>>,
+    pub pending_tab: Mutex<Option<String>>,
+    pub settings_size: Mutex<Option<(f64, f64)>>,
+    pub download: Mutex<DownloadState>,
+    pub last_check: Mutex<Option<CheckResult>>,
+    pub last_checked_at: Mutex<Option<std::time::SystemTime>>,
+    /// 显示器并集边界缓存：(计算时刻, (min_x, min_y, max_x, max_y))。
+    /// 走动时每帧 setPosition 都会触发 Moved → clamp，若每次都枚举显示器
+    /// （available_monitors 是系统调用）纯属浪费；TTL 见 geometry::MONITOR_BOUNDS_TTL。
+    pub monitor_bounds: Mutex<Option<(Instant, (i32, i32, i32, i32))>>,
+}

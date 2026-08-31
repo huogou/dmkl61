@@ -1,0 +1,93 @@
+# 推送 v* 标签时：在 Windows 上构建 → 生成绿色版 zip → 发布到 GitHub Releases。
+#
+# 用法：
+#   1. 改好版本号（package.json / tauri.conf.json）；
+#   2. git tag v0.1.0 && git push github v0.1.0
+#   3. Actions 自动跑完后，Releases 页面即出现带 zip 的发行版。
+#
+# 注意：远程 origin 是 Gitee，本工作流只在 GitHub 远程上生效，
+# 所以推标签要推到 github 远程（git push github v0.1.0）。
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+# 需要写 Releases 的权限。
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 拉全历史与标签（供发版脚本/构建使用）
+
+      - name: 安装 pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Rust 构建产物
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装前端依赖
+        run: pnpm install --frozen-lockfile
+
+      # tauri build 会触发 afterBuildCommand（scripts/package.mjs），
+      # 编译完即在 dist-package/ 生成 dmkl61-<版本>-windows.zip。
+      - name: 构建并打包 zip
+        run: pnpm app:build
+
+      # 从 CHANGELOG.md 抠出当前版本段作为发行说明，使 release 与 CHANGELOG 一致：
+      # 首版人工撰写，后续由发版脚本（scripts/release.mjs）用 git-cliff 增量更新。
+      - name: 提取发行说明
+        shell: bash
+        run: node scripts/extract-changelog.mjs "${{ github.ref_name }}" > RELEASE_NOTES.md
+
+      - name: 追加下载说明
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"     # v0.2.1 → 0.2.1
+          sed "s/__VERSION__/$version/g" scripts/release-footer.md >> RELEASE_NOTES.md
+
+      - name: 发布到 GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-package/dmkl61.exe
+            dist-package/version.json
+            dist-package/dmkl61-resources.zip
+            dist-package/dmkl61-*-full.zip
+          body_path: RELEASE_NOTES.md
+
+      - name: 触发服务端同步到 Gitee
+        if: success()
+        env:
+          SYNC_URL: ${{ secrets.SYNC_WEBHOOK_URL }}
+          SYNC_SECRET: ${{ secrets.SYNC_WEBHOOK_SECRET }}
+          SYNC_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          BODY="{\"ref\":\"$SYNC_TAG\",\"action\":\"published\"}"
+          SIG="sha256=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SYNC_SECRET" -hex | awk '{print $2}')"
+          curl -fsS -X POST "$SYNC_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: release" \
+            -H "X-Hub-Signature-256: $SIG" \
+            -d "$BODY"
