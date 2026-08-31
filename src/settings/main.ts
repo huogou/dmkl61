@@ -7,7 +7,7 @@ import {
   loadAppSettings,
   globalSettings,
 } from '../pet-core/appSettings'
-import { loadAppConfig, hideAddCat } from '../pet-core/appConfig'
+import { hideAddCat } from '../pet-core/appConfig'
 
 // 设置窗是 tauri.conf.json 预创建单例（visible:false），JS 启动只加载一次配置；
 // 之后每次 open_settings 打开（show）由后端发 settings-activated 事件触发重载，
@@ -25,8 +25,6 @@ listen('settings-activated', () => {
   try {
     await bootstrapIfEmpty()
     await loadAppSettings()
-    // 先拉远程配置：单猫模式下只开 default 猫，忽略 autoShowCats 里的其他猫。
-    await loadAppConfig()
     // 启动自动上班：用户在基础设置卡片勾选的猫；旧配置/空列表回退 default。
     const ids = hideAddCat.value
       ? ['default']

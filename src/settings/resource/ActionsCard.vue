@@ -161,7 +161,7 @@ import DirSelect, { type DirNode } from './DirSelect.vue'
 import MoveSegmentsDialog from './MoveSegmentsDialog.vue'
 import TransformDialog from './TransformDialog.vue'
 import type { ActionRow } from './manifestTypes'
-// 「变换」高级参数是否显示：由远程应用配置控制（启动时 loadAppConfig 拉取）。
+// 「变换」高级参数是否显示：由本地应用配置控制（appConfig.ts 的 showTransform，默认 false）。
 import { showTransform } from '../../pet-core/appConfig'
 
 const props = defineProps<{

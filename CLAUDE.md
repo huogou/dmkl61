@@ -22,7 +22,7 @@ Package name: `dmkl61`; Tauri identifier is currently the placeholder `com.examp
 - Symbol names, API names, paths, and examples inside comments stay as-is; only explanatory text should be Chinese.
 - This convention applies to comments only. Identifiers, string literals, and visible UI copy are not constrained by it.
 - Rust comments in `src-tauri/` are not strictly forced, but most existing module comments are Chinese; match nearby style.
-- When answering the user, call them “老大�?
+- When answering the user, call them “老大”.
 
 ## Common commands
 
@@ -70,7 +70,7 @@ Run these from `server/`, not the root:
 - `settings.html` mounts `src/settings/main.ts`, which renders the normal settings window.
 - `vite.config.ts` builds both entries via Rollup input names `main` and `settings`.
 
-### `src/pet-core/` �?shared domain/state logic
+### `src/pet-core/` — shared domain/state logic
 
 This folder is the shared model layer used by both the pet window and settings window.
 
@@ -87,14 +87,14 @@ Settings synchronization generally follows a one-way pattern: settings UI saves/
 
 ### Persisted data layout (`~/.dmkl61/`)
 
-- `setting.json` �?global: `version`, `activeCatId`, `updateDismiss`, and `cats: { <id>: { name, birthday, gender, tags, description } }` (the **identity profile**; used by card list / cat picker so they need not open every cat file).
-- `cats/<id>.json` �?per-cat **behavior config**: `display`, `menu`, `speakPhrases`, `speakPhrasesDefault`, `triggerBindings`, `windowPos`, and `resourceRoot`. Writing one cat never touches another (no races, no cat loss).
-- `avatars/<id>.png` �?per-cat avatar image; **file existence is the sole source of truth** for "has avatar" (no `hasAvatar` flag).
-- `app-icon.png` �?custom app/tray icon; global, decoupled from any cat's resource root.
+- `setting.json` — global: `version`, `activeCatId`, `updateDismiss`, and `cats: { <id>: { name, birthday, gender, tags, description } }` (the **identity profile**; used by card list / cat picker so they need not open every cat file).
+- `cats/<id>.json` — per-cat **behavior config**: `display`, `menu`, `speakPhrases`, `speakPhrasesDefault`, `triggerBindings`, `windowPos`, and `resourceRoot`. Writing one cat never touches another (no races, no cat loss).
+- `avatars/<id>.png` — per-cat avatar image; **file existence is the sole source of truth** for "has avatar" (no `hasAvatar` flag).
+- `app-icon.png` — custom app/tray icon; global, decoupled from any cat's resource root.
 
 `resourceRoot` is a **server-owned field**: `pet_save_cat` preserves the on-disk value (only `pet_set_resource_root` may change it), so a pet window's full-file snapshot (e.g. on `windowPos` save) cannot clobber the resource root a settings window just set. Identity (basic) is written to `setting.json` by `saveNow`; behavior is written to `cats/<id>.json`.
 
-### `src/pet-window/` �?transparent pet window
+### `src/pet-window/` — transparent pet window
 
 - `PetApp.vue` loads external resources before mounting `<Pet>`. If resource loading fails or required behavior data is missing, it shows `MissingResources` instead of the pet.
 - `components/Pet/Pet.vue` is the main window coordinator: sprite rendering, drag, gestures, radial menu, head calibration, opacity, click-through, global shortcuts, and invoking Tauri commands.
@@ -105,7 +105,7 @@ Settings synchronization generally follows a one-way pattern: settings UI saves/
 
 The main window is transparent, borderless, always-on-top, skip-taskbar, non-resizable, and initially hidden until Rust positions it. Transparent background uses `pointer-events: none`; interactive children re-enable pointer events locally.
 
-### `src/settings/` �?settings window
+### `src/settings/` — settings window
 
 `SettingsApp.vue` renders a normal decorated settings window with Element Plus and a left navigation rail:
 
@@ -117,7 +117,7 @@ The main window is transparent, borderless, always-on-top, skip-taskbar, non-res
 
 The settings window (label `settings`) is defined in `tauri.conf.json` and starts hidden; `window::open_settings` / `toggle_settings` show and focus it. It loads `settings.html`, remembers its last logical size in memory, and supports opening directly to a tab via `pet_open_settings(tab)` / `pet_consume_pending_tab` / `navigate-to`.
 
-### `src-tauri/` �?Rust backend
+### `src-tauri/` — Rust backend
 
 `src-tauri/src/lib.rs` only assembles modules, plugins, managed state, command registration, window events, tray setup, initial positioning, custom icon loading, and update cleanup. Feature code is split into modules:
 
@@ -139,10 +139,10 @@ The app ships no sprite frames. Frames are loaded from each cat's `manifest.json
 
 Resource root is **per-cat**: each cat's `cats/<id>.json` carries its own `resourceRoot` (a behavior-layer field, see below). `resources::resource_root(app, cat_id)` resolves per cat:
 
-1. `dmkl61_RESOURCES` environment variable (global dev override; **when set, per-cat is disabled** �?all cats share this root).
+1. `dmkl61_RESOURCES` environment variable (global dev override; **when set, per-cat is disabled** — all cats share this root).
 2. That cat's `resourceRoot` if it points at a valid directory.
 3. Only the default cat `"default"` falls back to the bundled `resources/` (debug: repo-root `resources/` from `CARGO_MANIFEST_DIR`; release: `resources/` next to the exe).
-4. Otherwise `None` �?the cat has no assets yet; the pet window shows the `MissingResources` guide directing the user to resource settings to pick a directory.
+4. Otherwise `None` — the cat has no assets yet; the pet window shows the `MissingResources` guide directing the user to resource settings to pick a directory.
 
 `pet_scan_resources(catId)` reads the manifest, resolves `follow.dir` and every action `dir`, lists supported image extensions (`webp/png/jpg/jpeg/gif/bmp`) by filename order, and returns absolute paths. A cat with no resource root returns an `error` instead of crashing. The frontend converts those to asset URLs with `convertFileSrc()`. `tauri.conf.json` enables the asset protocol with scope `**`.
 
@@ -223,9 +223,9 @@ The transparent window normally lets empty space click through. Enabling click-t
 
 ## Tauri windows and capabilities
 
-- Settings window label: `settings`; defined in `tauri.conf.json` as a normal decorated, resizable window loading `settings.html`, with `visible:false` on startup. It doubles as the bootstrap entry: `src/settings/main.ts` runs `bootstrapIfEmpty` + `loadAppSettings`, then invokes `pet_show_cat_window` to bring up the default cat window �?so on launch only the cat appears, not the settings UI. The settings window is shown later via tray / `pet_open_settings` / `toggle_settings`.
-- Cat window label: `cat-<id>` (one per cat); created dynamically by `window::show_cat_window` �?transparent, borderless, always-on-top, skip-taskbar, no shadow, non-resizable, built hidden then positioned at the bottom-right of the current monitor work area and shown to avoid flash.
-- Settings window close (×) = hide to tray (tray "退�? is the real quit); cat window close = destroy that window.
+- Settings window label: `settings`; defined in `tauri.conf.json` as a normal decorated, resizable window loading `settings.html`, with `visible:false` on startup. It doubles as the bootstrap entry: `src/settings/main.ts` runs `bootstrapIfEmpty` + `loadAppSettings`, then invokes `pet_show_cat_window` to bring up the default cat window — so on launch only the cat appears, not the settings UI. The settings window is shown later via tray / `pet_open_settings` / `toggle_settings`.
+- Cat window label: `cat-<id>` (one per cat); created dynamically by `window::show_cat_window` — transparent, borderless, always-on-top, skip-taskbar, no shadow, non-resizable, built hidden then positioned at the bottom-right of the current monitor work area and shown to avoid flash.
+- Settings window close (×) = hide to tray (tray "退出" is the real quit); cat window close = destroy that window.
 - `src-tauri/capabilities/default.json` lists `dmkl61`, `settings`, and `cat-*` and allows required core window APIs plus global-shortcut permissions.
 - `src-tauri/capabilities/settings.json` separately allows settings-window defaults, close/minimize, and dialog open.
 - If using new Tauri core/plugin APIs from frontend, add the corresponding capability permission. Do not add permissions for custom `pet_*` commands.
@@ -244,14 +244,14 @@ The conversion tool is split deliberately:
 
 - Frontend (`src/settings/tools/VideoToWebp.vue`, `chromaKey.ts`, `frameCache.ts`) handles video decoding, frame stepping, chroma key processing, caching, and WebP encoding using browser APIs.
 - Rust (`converter.rs`) only creates the target directory, optionally clears old `.webp` files, and writes received frame bytes.
-- **Output directory is user-chosen** (system directory picker), defaulting to `<video parent dir>/<video name without ext>_帧图片`. It is no longer forced under the resource root �?`pet_converter_begin(dir, clear)` takes an absolute path and only rejects `..` traversal components. Generated frames can then be referenced from the manifest via an absolute `dir`.
+- **Output directory is user-chosen** (system directory picker), defaulting to `<video parent dir>/<video name without ext>_帧图片`. It is no longer forced under the resource root — `pet_converter_begin(dir, clear)` takes an absolute path and only rejects `..` traversal components. Generated frames can then be referenced from the manifest via an absolute `dir`.
 
 ## Hot update and release flow
 
 `src-tauri/src/updater.rs` updates only the exe; it never modifies `resources/`.
 
-- Check/download fallback order is Gitee �?GitHub �?server. `SERVER_BASE` is currently a placeholder and must be replaced before real server distribution.
-- Windows self-replacement uses rename-dance: current exe �?`.old`, downloaded `.new` �?current exe, spawn new process, exit old process. Debug builds disable self-replacement.
+- Check/download fallback order is Gitee → GitHub → server. `SERVER_BASE` is currently a placeholder and must be replaced before real server distribution.
+- Windows self-replacement uses rename-dance: current exe → `.old`, downloaded `.new` → current exe, spawn new process, exit old process. Debug builds disable self-replacement.
 - Progress is emitted as `update://progress` with `{ downloaded, total }` and shown in settings.
 - The authoritative binary is the GitHub Actions artifact from GitHub Release. Mirrors must redistribute that exact exe/version pair so sha256 matches across fallback sources.
 
@@ -266,21 +266,27 @@ Remote naming is assumed by scripts: `github` is GitHub and `origin` is Gitee.
 CI cache notes:
 
 - `release.yml` must remain tag-triggered without `paths` filters, otherwise tag releases can be skipped.
-- 发版前不再预热缓存：tag 触发�?release run �?tag 互相隔离、读不到彼此缓存，故每次发版全量编译 Rust 依赖（~7 分钟）。这是有意的简化，不维护养缓存工作流�?- Rust release profile uses `opt-level=1` and `strip=true` to reduce CI build/link time for this low-runtime-load app.
+- 发版前不再预热缓存：tag 触发的 release run 跨 tag 互相隔离、读不到彼此缓存，故每次发版全量编译 Rust 依赖（~7 分钟）。这是有意的简化，不维护养缓存工作流。
+- Rust release profile uses `opt-level=1` and `strip=true` to reduce CI build/link time for this low-runtime-load app.
 
-### 提交信息�?changelog 规范
+### 提交信息与 changelog 规范
 
-CHANGELOG.md �?`cliff.toml` 通过 git-cliff �?conventional commits 自动生成，面向终端用户，只收�?`feat`/`fix`/`perf`；`ci`/`build`/`chore`/`refactor`/`docs` 等前缀默认已跳过�?
-但有些提交虽然语义上�?`feat`/`fix`，内容却与用户可感知的软件功能无关——例�?CI 流程调整、构建脚本修复、依赖升级、配置脚手架等内部改动。这类提交若直接�?`feat`/`fix` 前缀，会被误收入用户面向的更新日志。处理方式：在提交信息正文末尾追�?footer `changelog: ignore`，git-cliff 命中后即跳过、不�?CHANGELOG（见 `cliff.toml` �?`commit_parsers` 首条规则）�?
-写法�?
+CHANGELOG.md 由 `cliff.toml` 通过 git-cliff 从 conventional commits 自动生成，面向终端用户，只收录 `feat`/`fix`/`perf`；`ci`/`build`/`chore`/`refactor`/`docs` 等前缀默认已跳过。
+
+但有些提交虽然语义上是 `feat`/`fix`，内容却与用户可感知的软件功能无关——例如 CI 流程调整、构建脚本修复、依赖升级、配置脚手架等内部改动。这类提交若直接用 `feat`/`fix` 前缀，会被误收入用户面向的更新日志。处理方式：在提交信息正文末尾追加 footer `changelog: ignore`，git-cliff 命中后即跳过、不进 CHANGELOG（见 `cliff.toml` 的 `commit_parsers` 首条规则）。
+
+写法：
+
 ```
 fix: 修正发版脚本的版本号同步逻辑
 
-仅影响发布流程，用户无感�?
+仅影响发布流程，用户无感。
+
 changelog: ignore
 ```
 
-判定标准：若该改动用户在 release notes 里看到会困惑或无感（"这跟我有什么关�?），就加 `changelog: ignore`；若确实是新功能或用户能遇到�?bug 修复，则正常进日志、不加该标记�?
+判定标准：若该改动用户在 release notes 里看到会困惑或无感（"这跟我有什么关系"），就加 `changelog: ignore`；若确实是新功能或用户能遇到的 bug 修复，则正常进日志、不加该标记。
+
 ## Nested `server/` architecture
 
 `server/` is not part of the root desktop app repo history and is ignored by root `.gitignore`, but it is present in this working tree.

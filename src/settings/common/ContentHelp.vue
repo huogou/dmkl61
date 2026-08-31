@@ -84,10 +84,10 @@ const props = withDefaults(
     title?: string
     /** 弹窗宽度。 */
     width?: string
-    /** 说明服务基址；桌面 WebView 不能使用相对 /api，默认走线上服务。 */
+    /** 说明服务基址；纯本地版本无后端，未配置时请求自然失败并隐身按钮。 */
     baseUrl?: string
   }>(),
-  { label: '使用说明', width: '760px' },
+  { label: '使用说明', width: '760px', baseUrl: '' },
 )
 
 /** 当前模式：传了 page 走列表模式，否则单条模式。 */
