@@ -62,8 +62,9 @@ import { QuestionFilled } from '@element-plus/icons-vue'
 import { MdPreview } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
 import type { ContentPage } from './contentPages'
+import { LOCAL_CONTENTS } from './contentLocal'
 
-interface ContentItem {
+export interface ContentItem {
   key: string
   page?: string | null
   label?: string | null
@@ -158,6 +159,10 @@ async function probe() {
 }
 
 async function fetchList(page: string): Promise<ContentItem[]> {
+  // 纯本地版（baseUrl 为空）：直接读仓库内置教程，不发网络请求。
+  if (!props.baseUrl) {
+    return LOCAL_CONTENTS[page] ?? []
+  }
   const base = props.baseUrl.replace(/\/$/, '')
   const resp = await fetch(
     `${base}/api/contents?page=${encodeURIComponent(page)}`,
@@ -167,6 +172,14 @@ async function fetchList(page: string): Promise<ContentItem[]> {
 }
 
 async function fetchSingle(key: string): Promise<ContentItem> {
+  // 纯本地版（baseUrl 为空）：从内置教程按 key 查找单条。
+  if (!props.baseUrl) {
+    const found = Object.values(LOCAL_CONTENTS)
+      .flat()
+      .find((i) => i.key === key)
+    if (!found) throw new Error(`local content not found: ${key}`)
+    return found
+  }
   const base = props.baseUrl.replace(/\/$/, '')
   const resp = await fetch(`${base}/api/contents/${encodeURIComponent(key)}`)
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
