@@ -1,0 +1,30 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+
+.vscode/
+!.vscode/settings.json
+.claude/
+
+# Rust / Tauri build output (huge, generated)
+src-tauri/target/
+target/
+
+# 打包产物（pnpm app:build 生成的绿色版 zip）
+dist-package/
+# 镜像中转目录（publish:mirrors 从 GitHub Release 下载的唯一构建产物）
+dist-mirror/
+# 源码归档包（本地备份用，体积大，不入库）
+*.zip
+
+# Generated Tauri files
+src-tauri/gen/schemas/
+
+server/
+
+.codegraph/
+.superpowers/
+.playwright-cli/
+docs/superpowers/

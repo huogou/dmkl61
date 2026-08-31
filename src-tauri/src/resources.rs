@@ -1,0 +1,390 @@
+﻿//! 外置资源：资源根定位与持久化、扫描帧、manifest 读写、目录树列举。
+
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+
+use tauri::Manager;
+
+/// 某只猫的资源根目录定位优先级：
+/// 1) 环境变量 `dmkl61_RESOURCES`（全局 dev 覆盖，最高优先——**一旦设置，按猫功能在该环境失效**，所有猫同资源）；
+/// 2) 该猫 `cats/<id>.json` 的 `resource_root`（设置页「更换目录」写入，需为有效目录）；
+/// 3) 仅默认猫 `default`：回退内置 `resources/`（debug=项目根，release=exe 同级）；
+/// 4) 否则 `None`——表示这只猫还没配素材，调用方据此走缺资源引导。
+pub fn resource_root(app: &tauri::AppHandle, cat_id: &str) -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("dmkl61_RESOURCES") {
+        if !p.trim().is_empty() {
+            return Some(PathBuf::from(p));
+        }
+    }
+    // 该猫自己设定的资源根；目录失效则跳过。
+    let cat = crate::settings::load_cat(app, cat_id);
+    if let Some(s) = cat.resource_root.as_ref() {
+        let p = PathBuf::from(s);
+        if p.is_dir() {
+            return Some(p);
+        }
+    }
+    // 仅默认猫回退到内置 resources/；其他猫无素材返回 None。
+    if cat_id != "default" {
+        return None;
+    }
+    #[cfg(debug_assertions)]
+    {
+        // 开发模式下 CARGO_MANIFEST_DIR 指向 src-tauri，其父目录即项目根。
+        if let Some(root) = Path::new(env!("CARGO_MANIFEST_DIR")).parent() {
+            return Some(root.join("resources"));
+        }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            return Some(dir.join("resources"));
+        }
+    }
+    Some(PathBuf::from("resources"))
+}
+
+/// 受支持的帧图片扩展名（统一按小写比较）。
+const FRAME_EXTS: [&str; 6] = ["webp", "png", "jpg", "jpeg", "gif", "bmp"];
+
+/// 列出某动作目录下、按文件名排序的帧文件绝对路径。
+/// `dir` 是绝对路径时直接使用，否则拼接到资源根下。
+fn list_frames(root: &Path, dir: &str) -> Vec<PathBuf> {
+    list_frames_at(&resolve_dir(root, dir))
+}
+
+/// 把动作的 `dir` 解析为绝对路径：绝对路径原样返回，相对路径拼到资源根下。
+fn resolve_dir(root: &Path, dir: &str) -> PathBuf {
+    let p = Path::new(dir);
+    if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        root.join(p)
+    }
+}
+
+/// 列出目录下按文件名排序的帧文件绝对路径（目录读不到时返回空表，非致命）。
+fn list_frames_at(full: &Path) -> Vec<PathBuf> {
+    let mut out: Vec<PathBuf> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(full) {
+        for e in entries.flatten() {
+            let path = e.path();
+            if !path.is_file() {
+                continue;
+            }
+            let ok = path
+                .extension()
+                .and_then(|x| x.to_str())
+                .map(|x| FRAME_EXTS.contains(&x.to_lowercase().as_str()))
+                .unwrap_or(false);
+            if ok {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// `pet_scan_resources` 的返回结构。
+#[derive(serde::Serialize)]
+pub struct ScanResult {
+    /// 资源根目录的绝对路径（便于前端展示/排错）。
+    root: String,
+    /// manifest.json 原样返回，强类型解析放在前端做。
+    manifest: serde_json::Value,
+    /// 动作名 → 帧文件绝对路径数组；跟随帧用特殊键 `"follow"`。
+    frames: HashMap<String, Vec<String>>,
+    /// 出错信息：读不到或解析失败时填入，前端据此显示「缺资源引导」。
+    error: Option<String>,
+}
+
+/// 扫描外置资源：读取 manifest.json，按 follow / actions 里各自的 `dir`
+/// 列出帧文件绝对路径，并把这些目录加入 asset 协议白名单，使前端能用
+/// `convertFileSrc` 直接加载磁盘上的图片。一次性返回，减少前后端往返。
+#[tauri::command]
+pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
+    // 该猫没有素材目录（新增猫未配置）→ 返回引导文案，前端据此显示缺资源卡。
+    let Some(root) = resource_root(&app, &cat_id) else {
+        return ScanResult {
+            root: String::new(),
+            manifest: serde_json::Value::Null,
+            frames: HashMap::new(),
+            error: Some("尚未为该猫设置素材目录，请到资源设置选择目录".to_string()),
+        };
+    };
+    let root_str = root.display().to_string();
+    let manifest_path = root.join("manifest.json");
+
+    let text = match std::fs::read_to_string(&manifest_path) {
+        Ok(t) => t,
+        Err(e) => {
+            return ScanResult {
+                root: root_str,
+                manifest: serde_json::Value::Null,
+                frames: HashMap::new(),
+                error: Some(format!(
+                    "读不到 manifest.json（{}）：{e}",
+                    manifest_path.display()
+                )),
+            }
+        }
+    };
+    let manifest: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(v) => v,
+        Err(e) => {
+            return ScanResult {
+                root: root_str,
+                manifest: serde_json::Value::Null,
+                frames: HashMap::new(),
+                error: Some(format!("manifest.json 解析失败：{e}")),
+            }
+        }
+    };
+
+    // 资源根递归加入 asset 白名单；绝对路径的动作目录下面再逐个补授权。
+    let scope = app.asset_protocol_scope();
+    let _ = scope.allow_directory(&root, true);
+
+    // 先汇总所有 (键, 目录)，再统一扫描，避免闭包对 frames 的可变借用冲突。
+    let mut dirs: Vec<(String, String)> = Vec::new();
+    if let Some(dir) = manifest
+        .get("follow")
+        .and_then(|f| f.get("dir"))
+        .and_then(|d| d.as_str())
+    {
+        dirs.push(("follow".to_string(), dir.to_string()));
+    }
+    if let Some(actions) = manifest.get("actions").and_then(|a| a.as_object()) {
+        for (name, def) in actions {
+            if let Some(dir) = def.get("dir").and_then(|d| d.as_str()) {
+                dirs.push((name.clone(), dir.to_string()));
+            }
+        }
+    }
+
+    let mut frames: HashMap<String, Vec<String>> = HashMap::new();
+    for (key, dir) in dirs {
+        if Path::new(&dir).is_absolute() {
+            let _ = scope.allow_directory(Path::new(&dir), false);
+        }
+        let paths = list_frames(&root, &dir);
+        frames.insert(
+            key,
+            paths
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect(),
+        );
+    }
+
+    ScanResult {
+        root: root_str,
+        manifest,
+        frames,
+        error: None,
+    }
+}
+
+/// `pet_read_manifest` 的返回结构。
+#[derive(serde::Serialize)]
+pub struct ManifestFile {
+    /// 资源根目录绝对路径。
+    root: String,
+    /// manifest.json 的绝对路径。
+    path: String,
+    /// 文件文本内容；不存在时为空串。
+    content: String,
+    /// 文件是否已存在。
+    exists: bool,
+}
+
+/// 读取资源根目录下的 manifest.json 原文（供设置窗编辑）。不存在不报错，
+/// 返回 exists=false + 空内容，由前端给出默认模板。
+#[tauri::command]
+pub fn pet_read_manifest(app: tauri::AppHandle, cat_id: String) -> ManifestFile {
+    // 该猫无素材目录 → 视作无 manifest（前端回退默认模板/空状态）。
+    let Some(root) = resource_root(&app, &cat_id) else {
+        return ManifestFile {
+            root: String::new(),
+            path: String::new(),
+            content: String::new(),
+            exists: false,
+        };
+    };
+    let path = root.join("manifest.json");
+    let exists = path.is_file();
+    let content = if exists {
+        std::fs::read_to_string(&path).unwrap_or_default()
+    } else {
+        String::new()
+    };
+    ManifestFile {
+        root: root.display().to_string(),
+        path: path.display().to_string(),
+        content,
+        exists,
+    }
+}
+
+/// 把内容写回资源根目录下的 manifest.json（目录不存在则创建）。
+/// 「没有就直接创建」即由此实现。该猫无素材目录时报错（防误写到进程 cwd）。
+#[tauri::command]
+pub fn pet_write_manifest(app: tauri::AppHandle, cat_id: String, content: String) -> Result<(), String> {
+    let root = resource_root(&app, &cat_id).ok_or("尚未为该猫设置素材目录")?;
+    std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    std::fs::write(root.join("manifest.json"), content).map_err(|e| e.to_string())
+}
+
+/// 资源根下没有 manifest.json 时写入的空白模板。用户更换目录到空文件夹后由
+/// `pet_set_resource_root` 自动创建，使其能在设置页从零配置动作/行为。
+const BLANK_MANIFEST: &str = r#"{
+  "version": 1,
+  "follow": { "dir": "follow", "clockwise": true, "startAngle": 0 },
+  "actions": {},
+  "behaviors": {}
+}
+"#;
+
+/// 设置某只猫选定的资源目录：校验目录 → 写入该猫 cats/<id>.json 的 resource_root →
+/// 若缺 manifest.json 则创建空白模板 → 返回采用后的资源根绝对路径。
+///
+/// **resource_root 的唯一权威写者**：走 load_cat → 改字段 → save_cat（helper 不做保留），
+/// 与 pet_save_cat 命令的「保留磁盘值」配合，确保只有此入口能改资源根。
+#[tauri::command]
+pub fn pet_set_resource_root(
+    app: tauri::AppHandle,
+    cat_id: String,
+    path: String,
+) -> Result<String, String> {
+    let dir = PathBuf::from(path.trim());
+    if dir.as_os_str().is_empty() {
+        return Err("目录路径为空".into());
+    }
+    if !dir.is_dir() {
+        return Err(format!("目录不存在：{}", dir.display()));
+    }
+    // 写入该猫的行为配置文件 cats/<id>.json 的 resource_root。
+    let mut cat = crate::settings::load_cat(&app, &cat_id);
+    cat.resource_root = Some(dir.display().to_string());
+    crate::settings::save_cat(&app, &cat_id, &cat)?;
+    // 缺 manifest.json 就创建空白模板，让用户能直接进设置页配置。
+    let manifest = dir.join("manifest.json");
+    if !manifest.is_file() {
+        std::fs::write(&manifest, BLANK_MANIFEST)
+            .map_err(|e| format!("创建 manifest.json 失败：{e}"))?;
+    }
+    Ok(dir.display().to_string())
+}
+
+
+/// 目录树节点：`label` 为目录名，`value` 为相对资源根的 POSIX 风格相对路径。
+#[derive(serde::Serialize)]
+pub struct DirNode {
+    label: String,
+    value: String,
+    children: Vec<DirNode>,
+}
+
+/// 递归列出 `dir` 下的子目录，`rel` 是相对资源根的前缀路径（用 `/` 分隔）。
+/// 跳过隐藏目录（`.` 开头）；限制递归深度避免异常深目录。
+fn list_subdirs(dir: &Path, rel: &str, depth: usize) -> Vec<DirNode> {
+    if depth == 0 {
+        return Vec::new();
+    }
+    let mut out: Vec<DirNode> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for e in entries.flatten() {
+            let path = e.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) if !n.starts_with('.') => n.to_string(),
+                _ => continue,
+            };
+            let value = if rel.is_empty() {
+                name.clone()
+            } else {
+                format!("{rel}/{name}")
+            };
+            let children = list_subdirs(&path, &value, depth - 1);
+            out.push(DirNode {
+                label: name,
+                value,
+                children,
+            });
+        }
+    }
+    out.sort_by(|a, b| a.label.cmp(&b.label));
+    out
+}
+
+/// 以该猫资源根为根，递归列出所有子目录，供设置页的目录树形下拉使用。
+/// 无素材目录 / 目录不可读时返回空数组（不报错）。
+#[tauri::command]
+pub fn pet_list_dirs(app: tauri::AppHandle, cat_id: String) -> Vec<DirNode> {
+    match resource_root(&app, &cat_id) {
+        Some(root) => list_subdirs(&root, "", 8),
+        None => Vec::new(),
+    }
+}
+
+/// 取某个动作目录的**首帧**绝对路径，供设置页做静态预览（视觉对齐弹窗）。
+///
+/// 与 `pet_scan_resources` 的区别：那个按**已保存**的 manifest 扫全部帧；这里按
+/// 前端传入的 `dir` 现取现用——设置页里用户刚改还没保存的目录也能立刻预览。
+/// 返回前把该目录加入 asset 白名单，前端 `convertFileSrc` 才能加载。
+/// 目录为空 / 不存在 / 无可用帧时返回 `None`，前端显示占位而非报错。
+#[tauri::command]
+pub fn pet_first_frame(app: tauri::AppHandle, cat_id: String, dir: String) -> Option<String> {
+    if dir.trim().is_empty() {
+        return None;
+    }
+    let p = Path::new(&dir);
+    let full = if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        resolve_dir(&resource_root(&app, &cat_id)?, &dir)
+    };
+    let first = list_frames_at(&full).into_iter().next()?;
+    let _ = app.asset_protocol_scope().allow_directory(&full, false);
+    Some(first.to_string_lossy().to_string())
+}
+
+/// 给单个图片文件授 asset 白名单，供设置页显示**用户自选的参考图**。
+///
+/// 自选参考图可能在资源根之外（美术给的设计稿、标了中线的标尺图），不在
+/// `pet_scan_resources` 授权过的目录里，`convertFileSrc` 会加载失败——故显式
+/// 按文件授权。只授这一个文件、不授整个目录：参考图的同级目录跟本应用无关。
+/// 文件不存在返回 `false`，前端据此提示而非静默失败。
+#[tauri::command]
+pub fn pet_allow_asset(app: tauri::AppHandle, path: String) -> bool {
+    let p = Path::new(&path);
+    if !p.is_file() {
+        return false;
+    }
+    app.asset_protocol_scope().allow_file(p).is_ok()
+}
+
+/// 列出某目录下按文件名排序的帧图片绝对路径，并把该目录加入 asset 白名单，
+/// 供帧对比弹窗用 `convertFileSrc` 直接加载。目录读不到或无图片时返回空表。
+///
+/// 与 `pet_scan_resources` 不同，这里面向**任意用户自选目录**（如视频转帧的
+/// 输出目录），不依赖 manifest / 资源根；按文件授权整目录即可。拒绝 `..`
+/// 逃逸，与 `converter.rs` 一致。排序为字典序，前端再按数值排序兜底。
+#[tauri::command]
+pub fn pet_list_frames_dir(app: tauri::AppHandle, dir: String) -> Result<Vec<String>, String> {
+    let p = PathBuf::from(dir.trim());
+    if p
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
+        return Err("路径不能包含 ..".into());
+    }
+    // 授权该目录（非递归：帧图片就在此目录下），让 convertFileSrc 能加载。
+    let _ = app.asset_protocol_scope().allow_directory(&p, false);
+    Ok(list_frames_at(&p)
+        .into_iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect())
+}
