@@ -6,6 +6,7 @@
 // 文案为初版草稿，可按真实产品用法直接修改本文件，无需改其他代码。
 
 import type { ContentItem } from './ContentHelp.vue'
+import { VIDEO_GEN_TUTORIAL } from './videoGenTutorial'
 
 export const LOCAL_CONTENTS: Record<string, ContentItem[]> = {
   // ── 基础设置页 ─────────────────────────────────────────────
@@ -96,6 +97,13 @@ export const LOCAL_CONTENTS: Record<string, ContentItem[]> = {
 
 > 提示：资源结构由 \`manifest.json\` 描述。没有该文件时页面只显示引导，不会渲染编辑区。`,
     },
+    {
+      key: 'video-generation',
+      page: 'resource',
+      label: '素材制作教程',
+      title: '素材制作 · 视频生成教程',
+      content: VIDEO_GEN_TUTORIAL,
+    },
   ],
 
   // ── 视频转帧页 ─────────────────────────────────────────────
@@ -125,6 +133,31 @@ export const LOCAL_CONTENTS: Record<string, ContentItem[]> = {
 ## 预览技巧
 - 左图拖蓝框可限定抠图区域；吸管模式下方向键 1px 微调、Enter 确认、Esc 取消。
 - 帧率建议值会按视频时长估算，导出后用这些图替换资源目录即可。`,
+    },
+  ],
+
+  // ── 关于页 ───────────────────────────────────────────────
+  update: [
+    {
+      key: 'update-overview',
+      page: 'update',
+      label: '使用说明',
+      title: '关于 · 使用说明',
+      content: `# 关于与更新
+
+查看程序版本、检查更新，并了解开源与反馈渠道。
+
+## 版本与更新
+- **当前版本**：页面顶部显示当前程序版本号。
+- **检查更新**：点击后向更新源查询是否有新版本；若有会提示下载。无网络时静默跳过，不影响使用。
+
+## 开源与反馈
+- 本程序基于开源桌面宠物项目二次开发，遵循其开源协议。
+- 遇到问题或建议，可通过设置内反馈入口或项目仓库提交 issue。
+
+## 数据与隐私
+- 小猫资料、配置与头像保存在本机，不上传任何服务器。
+- 联网仅用于「检查更新」与「下载默认资源包」，可离线正常使用全部核心功能。`,
     },
   ],
 }

@@ -1,8 +1,13 @@
-//! dmkl61 热更新：拉 version.json（三源 fallback）、流式下载新 exe（进度事件）、
+//! dmkl61 热更新：拉 version.json（多源 fallback）、流式下载新 exe（进度事件）、
 //! sha256 校验、Windows 改名腾位自替换、启动清理残留旧 exe。
 //!
 //! 下载源地址由 `manifest_urls()` / `exe_urls()` 按优先级提供（Gitee → GitHub）。
 //! 自建服务器源已停用（`config::SERVER_BASE` 为空）。
+//!
+//! 网络请求走 HTTP 代理（公司网络封 GitHub 需代理透传）：
+//! 1) 优先读取 HTTP_PROXY / HTTPS_PROXY / ALL_PROXY 标准环境变量
+//! 2) 未设时探测本机常见代理端口（7890/10809/10808/1080），命中即用
+//! 3) 都没有则直连
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -12,6 +17,65 @@ use sha2::{Digest, Sha256};
 use tauri::{Emitter, Manager};
 
 use crate::state::{DownloadState, PetState};
+
+/// 直连超时（秒）；代理连接比直连慢，给 15s 保守值。
+const REQUEST_TIMEOUT_SECS: u64 = 15;
+/// exe 大文件下载超时（秒）：按 30MB / 1MB·s ≈ 30s，给 10 分钟宽限。
+const DOWNLOAD_TIMEOUT_SECS: u64 = 600;
+
+/// 探测本机代理地址：依次尝试环境变量与常见代理端口。
+/// 返回 `Some("http://host:port")` 或 `None` 表示直连。
+fn detect_proxy() -> Option<String> {
+    // 1) 标准环境变量（大小写都试一次，Windows 偶尔出现小写）
+    for key in [
+        "HTTPS_PROXY",
+        "HTTP_PROXY",
+        "ALL_PROXY",
+        "https_proxy",
+        "http_proxy",
+        "all_proxy",
+    ] {
+        if let Ok(v) = std::env::var(key) {
+            let v = v.trim();
+            if !v.is_empty() {
+                return Some(v.to_string());
+            }
+        }
+    }
+    // 2) 探测本机常见代理端口（Clash 7890、ClashR 10808、V2 10809、SOCKS 1080）
+    for port in [7890u16, 10809, 10808, 1080, 1087, 8888] {
+        if std::net::TcpStream::connect_timeout(
+            &std::net::SocketAddr::from(([127, 0, 0, 1], port)),
+            std::time::Duration::from_millis(200),
+        )
+        .is_ok()
+        {
+            return Some(format!("http://127.0.0.1:{port}"));
+        }
+    }
+    None
+}
+
+/// 构建 reqwest 客户端，自动套代理与超时。`for_large_file` 控制超时（下载 vs 检查）。
+fn build_client(for_large_file: bool) -> Result<reqwest::Client, String> {
+    let timeout_secs = if for_large_file {
+        DOWNLOAD_TIMEOUT_SECS
+    } else {
+        REQUEST_TIMEOUT_SECS
+    };
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        // 显式 UA：GitHub raw/release 端点对匿名默认 UA 偶发 403。
+        .user_agent("dmkl61-updater");
+    if let Some(proxy) = detect_proxy() {
+        println!("[dmkl61 updater] 使用代理: {proxy}");
+        let p = reqwest::Proxy::all(&proxy).map_err(|e| format!("代理 {proxy} 无效：{e}"))?;
+        builder = builder.proxy(p);
+    } else {
+        println!("[dmkl61 updater] 未检测到代理，走直连");
+    }
+    builder.build().map_err(|e| e.to_string())
+}
 
 /// 当前正在执行的下载任务（用于取消与并发控制）。
 struct ActiveDownload {
@@ -142,14 +206,9 @@ pub fn exe_urls(version: &str, exe_name: &str) -> Vec<(&'static str, String)> {
     ]
 }
 
-/// 依次尝试三源 GET version.json，返回首个解析成功的清单。
+/// 依次尝试两源 GET version.json，返回首个解析成功的清单。
 async fn fetch_manifest() -> Result<VersionManifest, String> {
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        // 显式 UA：GitHub raw/release 端点对匿名默认 UA 偶发 403。
-        .user_agent("dmkl61-updater")
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = build_client(false)?;
     let mut last_err = String::from("无可用更新源");
     for (name, url) in manifest_urls() {
         match client.get(&url).send().await {
@@ -205,12 +264,7 @@ async fn download_to(
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
     use std::io::Write;
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(600))
-        // 显式 UA：GitHub raw/release 端点对匿名默认 UA 偶发 403。
-        .user_agent("dmkl61-updater")
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = build_client(true)?;
     let mut resp = client.get(url).send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("HTTP {}", resp.status()));

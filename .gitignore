@@ -28,3 +28,10 @@ server/
 .superpowers/
 .playwright-cli/
 docs/superpowers/
+
+# Build logs (console output)
+build*.log
+
+# 防止 rsync 复制叠层目录污染
+src/src/
+src-tauri/src/src/
