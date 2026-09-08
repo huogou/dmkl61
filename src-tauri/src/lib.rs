@@ -78,6 +78,8 @@ pub fn run() {
             window::pet_consume_pending_tab,
             window::pet_play_action,
             window::pet_open_url,
+            window::pet_start_fight,
+            window::pet_end_fight,
             window::pet_device_id,
             resources::pet_scan_resources,
             resources::pet_read_manifest,

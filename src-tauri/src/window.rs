@@ -358,6 +358,96 @@ fn read_machine_guid() -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// 「打架/互动」：隐藏两只猫窗，在中间创建一个播放互动帧的窗口。
+#[tauri::command]
+pub async fn pet_start_fight(app: tauri::AppHandle, cat1_id: String, cat2_id: String) {
+    let label1 = format!("cat-{cat1_id}");
+    let label2 = format!("cat-{cat2_id}");
+
+    // 获取两只猫窗口的位置，算中点
+    let (pos1, size1) = app
+        .get_webview_window(&label1)
+        .and_then(|w| {
+            let pos = w.outer_position().ok()?;
+            let size = w.outer_size().ok()?;
+            Some((pos, size))
+        })
+        .unwrap_or_else(|| (PhysicalPosition::new(0, 0), tauri::PhysicalSize::new(620, 400)));
+
+    let (pos2, size2) = app
+        .get_webview_window(&label2)
+        .and_then(|w| {
+            let pos = w.outer_position().ok()?;
+            let size = w.outer_size().ok()?;
+            Some((pos, size))
+        })
+        .unwrap_or_else(|| (PhysicalPosition::new(0, 0), tauri::PhysicalSize::new(620, 400)));
+
+    // 两只猫中心点
+    let cx1 = pos1.x + (size1.width as i32) / 2;
+    let cy1 = pos1.y + (size1.height as i32) / 2;
+    let cx2 = pos2.x + (size2.width as i32) / 2;
+    let cy2 = pos2.y + (size2.height as i32) / 2;
+    let mid_x = (cx1 + cx2) / 2;
+    let mid_y = (cy1 + cy2) / 2;
+
+    // 隐藏两只猫
+    if let Some(w) = app.get_webview_window(&label1) {
+        let _ = w.hide();
+    }
+    if let Some(w) = app.get_webview_window(&label2) {
+        let _ = w.hide();
+    }
+
+    // 创建打架窗口
+    let fight_w = 640;
+    let fight_h = 360;
+    let x = mid_x - fight_w / 2;
+    let y = mid_y - fight_h / 2;
+
+    // 已存在则先关
+    if let Some(old) = app.get_webview_window("fight-window") {
+        let _ = old.close();
+    }
+
+    match tauri::WebviewWindowBuilder::new(
+        &app,
+        "fight-window",
+        tauri::WebviewUrl::App("fight.html".into()),
+    )
+    .title("dmkl61-fight")
+    .inner_size(fight_w as f64, fight_h as f64)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .shadow(false)
+    .resizable(false)
+    .position(x as f64, y as f64)
+    .visible(true)
+    .build()
+    {
+        Ok(_) => {}
+        Err(e) => eprintln!("fight window build failed: {e}"),
+    }
+}
+
+/// 「打架/互动」结束：关闭打架窗口，恢复两只猫显示。
+#[tauri::command]
+pub async fn pet_end_fight(app: tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("fight-window") {
+        let _ = win.close();
+    }
+    // 恢复所有猫窗
+    for (label, win) in app.webview_windows() {
+        if label.starts_with("cat-") {
+            let _ = win.show();
+            let _ = win.unminimize();
+            let _ = win.set_focus();
+        }
+    }
+}
+
 #[cfg(not(target_os = "windows"))]
 fn read_machine_guid() -> Option<String> {
     None

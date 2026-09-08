@@ -130,6 +130,21 @@ export const PET_ACTIONS: Record<string, PetAction> = {
       .catch(() => {})
   },
 
+  /** 「打架」：和另一只可见的猫发起互动。 */
+  fight: (ctx) => {
+    ctx.menuOpen.value = false
+    invoke<string[]>('pet_list_visible_cats')
+      .then((cats) => {
+        const others = cats.filter((id) => id !== ctx.catId)
+        if (others.length === 0) {
+          ctx.say('只有我一只猫，和谁打？', 3000)
+          return
+        }
+        invoke('pet_start_fight', { cat1Id: ctx.catId, cat2Id: others[0] }).catch(() => {})
+      })
+      .catch(() => {})
+  },
+
   /** 退出应用（整个 app 关闭）。 */
   quit: () => {
     invoke('pet_quit').catch((e) => console.error('pet_quit failed', e))

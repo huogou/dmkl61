@@ -28,6 +28,7 @@ export default defineConfig(async () => ({
       input: {
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
         settings: fileURLToPath(new URL('./settings.html', import.meta.url)),
+        fight: fileURLToPath(new URL('./fight.html', import.meta.url)),
       },
     },
   },

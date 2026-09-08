@@ -1,66 +1,109 @@
 <template>
   <div class="update-settings">
-    <!-- 顶部工具条，与设置页其他子页面保持统一 -->
     <SettingsHeader title="关于" />
 
     <main class="update-settings__body">
-      <!-- 品牌卡片：应用信息 + 操作按钮 -->
+      <!-- 应用信息 -->
       <el-card shadow="never" class="block">
-        <div class="update-card">
-          <div class="update-card__brand">
-            <img :src="appIcon" class="update-card__icon" alt="应用图标" />
-            <div class="update-card__meta">
-              <div class="update-card__name">dmkl61</div>
-              <div class="update-card__version">桌宠：大米 / 可乐 / 六一 · v{{ current || '…' }}</div>
-            </div>
+        <div class="about-card">
+          <img :src="appIcon" class="about-card__icon" alt="应用图标" />
+          <div class="about-card__meta">
+            <div class="about-card__name">dmkl61</div>
+            <div class="about-card__version">桌宠 · v{{ current || '…' }}</div>
           </div>
-
-          <div class="update-card__actions">
-            <el-button
-              type="primary"
-              :icon="primaryIcon"
-              :loading="checking || downloading"
-              :disabled="primaryDisabled"
-              @click="onPrimaryAction"
-            >
-              {{ primaryText }}
-            </el-button>
-          </div>
-        </div>
-
-        <!-- 下载进度 + 取消按钮 -->
-        <div v-if="downloading || progress > 0" class="update-progress-row">
-          <el-progress
-            :percentage="progress"
-            :status="progress === 100 ? 'success' : undefined"
-            class="update-progress"
-          />
-          <el-tooltip v-if="downloading" content="取消下载" placement="top">
-            <el-button
-              type="danger"
-              text
-              circle
-              :icon="Close"
-              :loading="cancelling"
-              @click="onCancel"
-            />
-          </el-tooltip>
-        </div>
-
-        <!-- 新版本提示横幅 -->
-        <div v-if="hasUpdate && !downloadedPath" class="new-version-banner">
-          检测到新版本：{{ latest }}
         </div>
       </el-card>
 
-      <!-- 富文本更新说明：后端接口返回 HTML 后在此渲染 -->
-      <!-- <el-card shadow="never" class="block">
-        <div class="rich-notes">
-          <div class="rich-notes__title">更新说明</div>
-          <div v-if="notes" class="rich-notes__body" v-html="notes" />
-          <div v-else class="rich-notes__empty">暂无更新说明</div>
+      <!-- 自定义头像 -->
+      <el-card shadow="never" class="block">
+        <template #header>
+          <span class="card-title">自定义头像</span>
+        </template>
+
+        <div class="avatar-section">
+          <div class="avatar-preview">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              class="avatar-img"
+              alt="当前头像"
+            />
+            <img
+              v-else
+              :src="appIcon"
+              class="avatar-img avatar-img--default"
+              alt="默认头像"
+            />
+            <div class="avatar-label">
+              {{ avatarUrl ? '当前自定义头像' : '默认头像（未自定义）' }}
+            </div>
+          </div>
+
+          <div class="avatar-actions">
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              class="hidden-input"
+              @change="onFileSelected"
+            />
+            <el-button
+              type="primary"
+              :loading="uploading"
+              @click="fileInput?.click()"
+            >
+              {{ uploading ? '上传中...' : '选择图片上传' }}
+            </el-button>
+            <el-button
+              v-if="avatarUrl"
+              @click="onApplyIcon"
+              :loading="applying"
+            >
+              {{ applying ? '设置中...' : '设为程序图标' }}
+            </el-button>
+            <el-button
+              v-if="avatarUrl"
+              type="danger"
+              plain
+              @click="onReset"
+            >
+              恢复默认
+            </el-button>
+          </div>
+
+          <div class="avatar-tip">
+            上传图片后将作为头像显示在设置页和宠物窗口。<br />
+            点击「设为程序图标」可同步更新任务栏和窗口图标。
+          </div>
         </div>
-      </el-card> -->
+      </el-card>
+
+      <!-- 版本检查 -->
+      <el-card shadow="never" class="block">
+        <template #header>
+          <span class="card-title">版本检查</span>
+        </template>
+        <div class="version-section">
+          <el-button
+            type="primary"
+            :icon="primaryIcon"
+            :loading="checking || downloading"
+            :disabled="primaryDisabled"
+            @click="onPrimaryAction"
+          >
+            {{ primaryText }}
+          </el-button>
+          <div v-if="downloading || progress > 0" class="version-progress">
+            <el-progress
+              :percentage="progress"
+              :status="progress === 100 ? 'success' : undefined"
+            />
+          </div>
+          <div v-if="hasUpdate && !downloadedPath" class="new-version-banner">
+            检测到新版本：{{ latest }}
+          </div>
+        </div>
+      </el-card>
     </main>
   </div>
 </template>
@@ -75,11 +118,74 @@ import {
   Close,
 } from '@element-plus/icons-vue'
 import SettingsHeader from '../common/SettingsHeader.vue'
+import {
+  avatarUrl,
+  saveAvatar,
+  resetAvatar,
+  applyAvatarAsIcon,
+} from '../../pet-core/appSettings'
 
-/** 应用图标（与 BasicSettings 共用同一份默认图标资源）。 */
 const appIcon = new URL('../../assets/icon.png', import.meta.url).href
 
-/** 后端 pet_update_check 的返回结构。 */
+// ── 头像上传 ──────────────────────────────────
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
+const applying = ref(false)
+
+function onFileSelected(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片不能超过 5MB')
+    target.value = ''
+    return
+  }
+
+  uploading.value = true
+  const reader = new FileReader()
+  reader.onload = async () => {
+    try {
+      await saveAvatar(reader.result as string)
+      ElMessage.success('头像上传成功')
+    } catch (err) {
+      ElMessage.error(`上传失败：${err}`)
+    } finally {
+      uploading.value = false
+      target.value = ''
+    }
+  }
+  reader.onerror = () => {
+    ElMessage.error('读取文件失败')
+    uploading.value = false
+    target.value = ''
+  }
+  reader.readAsDataURL(file)
+}
+
+async function onApplyIcon() {
+  applying.value = true
+  try {
+    await applyAvatarAsIcon()
+    ElMessage.success('已设为程序图标')
+  } catch (err) {
+    ElMessage.error(`设置失败：${err}`)
+  } finally {
+    applying.value = false
+  }
+}
+
+async function onReset() {
+  try {
+    await resetAvatar()
+    ElMessage.success('已恢复默认头像')
+  } catch (err) {
+    ElMessage.error(`恢复失败：${err}`)
+  }
+}
+
+// ── 版本检查 ──────────────────────────────────
 interface CheckResult {
   hasUpdate: boolean
   current: string
@@ -87,7 +193,6 @@ interface CheckResult {
   notes: string
 }
 
-/** 后端 pet_update_last_result 的返回结构（只读缓存，不发网络请求）。 */
 interface LastCheckResult {
   result: CheckResult | null
   checkedAtMs: number | null
@@ -104,7 +209,6 @@ const progress = ref(0)
 const downloadedPath = ref('')
 const currentDownloadId = ref(0)
 
-/** 主按钮文案：根据当前状态在「检查中 / 下载中 / 更新到 / 安装并重启 / 检查更新」之间切换。 */
 const primaryText = computed(() => {
   if (downloadedPath.value) return '立即安装并重启'
   if (downloading.value) return '下载中...'
@@ -113,7 +217,6 @@ const primaryText = computed(() => {
   return '检查更新'
 })
 
-/** 主按钮图标：默认显示搜索，有更新时显示下载，已下载时显示重启。 */
 const primaryIcon = computed(() => {
   if (downloadedPath.value) return RefreshRight
   if (hasUpdate.value && !downloading.value && !checking.value) return Download
@@ -121,10 +224,8 @@ const primaryIcon = computed(() => {
   return undefined
 })
 
-/** 主按钮禁用：只在检查 / 下载过程中禁用；无更新时允许点击重新检查。 */
 const primaryDisabled = computed(() => checking.value || downloading.value)
 
-/** 主按钮点击：根据当前状态分发检查 / 下载 / 安装。 */
 async function onPrimaryAction() {
   if (downloadedPath.value) {
     await onApply()
@@ -135,7 +236,6 @@ async function onPrimaryAction() {
   }
 }
 
-/** 手动或自动检查更新。 */
 async function onCheck() {
   checking.value = true
   try {
@@ -154,7 +254,6 @@ async function onCheck() {
   }
 }
 
-/** 页面打开时读一次后台轮询缓存；不发请求，切标签页/重开设置页都不会触发新检查。 */
 async function loadCachedResult() {
   try {
     const r = await invoke<LastCheckResult>('pet_update_last_result')
@@ -164,17 +263,15 @@ async function loadCachedResult() {
       hasUpdate.value = r.result.hasUpdate
     }
   } catch {
-    // 静默：缓存还未就绪时保持初始空状态，按钮仍可手动点「检查更新」。
+    // 静默
   }
 }
 
-/** 后端 pet_update_download 的返回结构。 */
 interface DownloadResult {
   path: string
   downloadId: number
 }
 
-/** 后端 pet_update_status 的返回结构。 */
 interface DownloadState {
   isDownloading: boolean
   downloadId: number
@@ -183,7 +280,6 @@ interface DownloadState {
   latestVersion: string
 }
 
-/** 下载新版本（进度由 update://progress 事件驱动）。 */
 async function onDownload() {
   downloading.value = true
   progress.value = 0
@@ -208,7 +304,6 @@ async function onDownload() {
   }
 }
 
-/** 取消正在进行的下载。 */
 async function onCancel() {
   cancelling.value = true
   try {
@@ -220,7 +315,6 @@ async function onCancel() {
   }
 }
 
-/** 安装并重启。 */
 async function onApply() {
   try {
     await invoke('pet_update_apply')
@@ -229,14 +323,10 @@ async function onApply() {
   }
 }
 
-/** 监听下载进度事件。 */
 let unlisten: UnlistenFn | undefined
-/** 监听下载开始事件，用于获取本次下载 id。 */
 let unlistenStart: UnlistenFn | undefined
-/** 监听下载完成事件，设置窗口打开时下载完毕可立即显示安装按钮。 */
 let unlistenCompleted: UnlistenFn | undefined
 
-/** 从后端恢复之前的下载状态（支持关闭窗口后后台下载）。 */
 async function restoreDownloadState() {
   try {
     const s = await invoke<DownloadState>('pet_update_status')
@@ -244,23 +334,20 @@ async function restoreDownloadState() {
     progress.value = s.progress
     downloadedPath.value = s.downloadedPath
     currentDownloadId.value = s.downloadId
-    // 若后端已记住新版本号但前端尚未检查，用它补全提示。
     if (s.latestVersion && !latest.value) {
       latest.value = s.latestVersion
       hasUpdate.value = true
     }
   } catch {
-    // 查询失败不影响主流程。
+    // 查询失败不影响主流程
   }
 }
 
 onMounted(async () => {
-  // 版本号是编译进 exe 的常量（纯本地、零网络），先秒填出来，
-  // 这样即便后面的网络检查慢或失败，「当前版本」也始终可见。
   try {
     current.value = await invoke<string>('pet_app_version')
   } catch {
-    // 取本地版本理论上不会失败；万一失败留空，由 onCheck 兜底。
+    // 取本地版本理论上不会失败
   }
   await loadCachedResult()
   await restoreDownloadState()
@@ -270,7 +357,6 @@ onMounted(async () => {
     total: number
     downloadId: number
   }>('update://progress', (e) => {
-    // 组件已卸载、下载已被取消，或事件来自旧任务时，忽略迟到进度事件。
     if (!downloading.value) return
     if (e.payload.downloadId !== currentDownloadId.value) return
     const { downloaded, total } = e.payload
@@ -292,11 +378,11 @@ onMounted(async () => {
     },
   )
 })
+
 onUnmounted(() => {
   unlisten?.()
   unlistenStart?.()
   unlistenCompleted?.()
-  // 关闭设置窗口不再取消下载，允许后台继续下载；下次打开通过 pet_update_status 恢复状态。
 })
 </script>
 
@@ -312,21 +398,18 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-.update-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
+.card-title {
+  font-weight: 600;
+  font-size: 15px;
 }
 
-.update-card__brand {
+.about-card {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.update-card__icon {
+.about-card__icon {
   width: 48px;
   height: 48px;
   border-radius: 10px;
@@ -334,162 +417,88 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.update-card__meta {
+.about-card__meta {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.update-card__name {
+.about-card__name {
   font-size: 18px;
   font-weight: 600;
   line-height: 1.2;
 }
 
-.update-card__version {
+.about-card__version {
   font-size: 13px;
   color: var(--el-text-color-secondary);
   line-height: 1.2;
 }
 
-.update-card__actions {
+.avatar-section {
   display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avatar-preview {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.avatar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--el-border-color);
 }
 
-.action-btn__icon {
-  width: 16px;
-  height: 16px;
+.avatar-img--default {
+  opacity: 0.7;
 }
 
-.update-progress-row {
+.avatar-label {
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.avatar-actions {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
 }
-.update-progress {
-  flex: 1;
 
-  :deep(.el-progress__text) {
-    text-align: center;
-  }
+.avatar-tip {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.version-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.version-progress {
+  margin-top: 8px;
 }
 
 .new-version-banner {
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.4;
-  margin-top: 16px;
-}
-
-.rich-notes__title {
-  font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--el-text-color-primary);
-}
-
-.rich-notes__body {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--el-text-color-regular);
-
-  :deep(h1),
-  :deep(h2),
-  :deep(h3) {
-    margin: 16px 0 8px;
-    font-weight: 600;
-    color: var(--el-text-color-primary);
-  }
-
-  :deep(h1) {
-    font-size: 16px;
-  }
-
-  :deep(h2) {
-    font-size: 15px;
-  }
-
-  :deep(h3) {
-    font-size: 14px;
-  }
-
-  :deep(p) {
-    margin: 8px 0;
-  }
-
-  :deep(ul),
-  :deep(ol) {
-    padding-left: 20px;
-    margin: 8px 0;
-  }
-
-  :deep(li) {
-    margin: 4px 0;
-  }
-
-  :deep(a) {
-    color: var(--el-color-primary);
-    text-decoration: none;
-  }
-
-  :deep(a:hover) {
-    text-decoration: underline;
-  }
-
-  :deep(code) {
-    font-family:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    background: var(--el-fill-color-light);
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 13px;
-  }
-
-  :deep(pre) {
-    background: var(--el-fill-color-light);
-    padding: 12px;
-    border-radius: 8px;
-    overflow-x: auto;
-    margin: 8px 0;
-  }
-
-  :deep(pre code) {
-    background: transparent;
-    padding: 0;
-  }
-
-  :deep(blockquote) {
-    margin: 8px 0;
-    padding: 8px 12px;
-    border-left: 4px solid var(--el-border-color);
-    background: var(--el-fill-color-light);
-    color: var(--el-text-color-secondary);
-  }
-
-  :deep(img) {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 8px 0;
-  }
-}
-
-.rich-notes__empty {
-  font-size: 14px;
-  color: var(--el-text-color-placeholder);
-  text-align: center;
-  padding: 24px 0;
 }
 </style>

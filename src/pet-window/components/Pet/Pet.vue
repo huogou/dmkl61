@@ -200,17 +200,16 @@ const MENU_EDGE_PADDING = 4
 const menuPos = ref({ x: 0, y: 0 })
 
 /**
- * 菜单真实尺寸：基准值 × 当前猫 size，与 Menu.vue 内爪印的等比缩放一致。
- * 猫放大菜单同步放大，定位/贴边 clamp 始终对齐实际渲染尺寸，故任何 size 下都居中不被裁。
+ * 菜单真实尺寸：竖排下拉菜单固定尺寸，不随猫 size 缩放。
  */
-const menuWidth = computed(() => Math.round(MENU_BASE_WIDTH * size.value))
-const menuHeight = computed(() => Math.round(MENU_BASE_HEIGHT * size.value))
+const menuWidth = computed(() => MENU_BASE_WIDTH)
+const menuHeight = computed(() => MENU_BASE_HEIGHT)
 
 /** 手势引擎在触发动作前写入的指针位置，供 openMenu 等动作使用。 */
 const pendingMenuPos = ref<{ x: number; y: number } | undefined>()
 
 /**
- * 把菜单"中心点"放到 `(cx, cy)` 处，再 clamp 到窗口内。
+ * 把菜单左上角放到 `(cx, cy)` 处（标准右键菜单行为），再 clamp 到窗口内。
  * 鼠标右键时 cx/cy = 光标位置；非鼠标触发（如托盘）时传 `undefined` → 落在窗口中心。
  */
 function placeMenuAt(cx?: number, cy?: number) {
@@ -218,14 +217,12 @@ function placeMenuAt(cx?: number, cy?: number) {
   const H = window.innerHeight
   const menuW = menuWidth.value
   const menuH = menuHeight.value
-  const halfW = menuW / 2
-  const halfH = menuH / 2
   const minX = MENU_EDGE_PADDING
   const minY = MENU_EDGE_PADDING
   const maxX = Math.max(minX, W - menuW - MENU_EDGE_PADDING)
   const maxY = Math.max(minY, H - menuH - MENU_EDGE_PADDING)
-  const targetX = (cx ?? W / 2) - halfW
-  const targetY = (cy ?? H / 2) - halfH
+  const targetX = cx ?? (W - menuW) / 2
+  const targetY = cy ?? (H - menuH) / 2
   menuPos.value = {
     x: Math.min(Math.max(targetX, minX), maxX),
     y: Math.min(Math.max(targetY, minY), maxY),
@@ -250,11 +247,13 @@ function openMenuAt(e: MouseEvent) {
   placeMenuAt(e.clientX, e.clientY)
 }
 
-/** 菜单浮层定位样式：左上角即为 `menuPos`，宽高交给 Menu 自身。 */
+/** 菜单浮层定位样式：左上角即为 `menuPos`，宽高与菜单基准尺寸一致。 */
 const menuStyle = computed(() => ({
   position: 'absolute' as const,
   left: `${menuPos.value.x}px`,
   top: `${menuPos.value.y}px`,
+  width: `${menuWidth.value}px`,
+  height: `${menuHeight.value}px`,
 }))
 
 // 按当前帧所属来源做视觉对齐：不同文件夹素材里猫的位置/大小不一致，

@@ -39,12 +39,12 @@ export const DISPLAY_DEFAULTS: DisplayStored = {
 /** 默认说话池（出厂默认，用户可编辑独立的「默认说话模板」）。 */
 export const DEFAULT_SPEAK_PHRASES: SpeakPhrase[] = [
   { text: '喵~', weight: 1 },
-  { text: '戳我干鸡毛？', weight: 1 },
-  { text: '今天也要加油哦！', weight: 1 },
+  { text: '戳我干嘛啦~', weight: 1 },
+  { text: '今天也要开开心心的！', weight: 1 },
   { text: '唱、跳、rap、篮球', weight: 1 },
-  { text: '我在认真看着你工作呢', weight: 1 },
-  { text: '老大，喝口水休息一下吧', weight: 1 },
-  { text: '摸鱼一时爽，一直摸鱼一直爽~', weight: 1 },
+  { text: '我在偷偷看着你呢~', weight: 1 },
+  { text: '记得喝水哦，我会担心的！', weight: 1 },
+  { text: '陪你的时间永远都不够~', weight: 1 },
 ]
 
 /** 默认触发器绑定（鼠标 4 条 + 快捷键 3 条）。 */

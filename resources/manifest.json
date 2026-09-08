@@ -7,6 +7,64 @@
     "startAngle": 0
   },
   "actions": {
+    "idleBreathe": {
+      "dir": "idle/breathe",
+      "fps": 24,
+      "name": "待机呼吸",
+      "yoyo": true
+    },
+    "sleepBreathe": {
+      "dir": "sleep/breathe",
+      "fps": 10,
+      "name": "睡觉呼吸",
+      "yoyo": true
+    },
+    "lieDown": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "趴下"
+    },
+    "wakeUp": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "起床",
+      "reverse": true
+    },
+    "action1": {
+      "dir": "fly",
+      "fps": 24,
+      "name": "跳跃",
+      "offsetY": 0.188,
+      "scale": 1.45,
+      "move": {
+        "loop": true,
+        "bounce": true,
+        "segments": [
+          {
+            "dir": 315,
+            "speed": 120,
+            "ms": 2000
+          }
+        ]
+      }
+    },
+    "action2": {
+      "dir": "wark/base",
+      "fps": 24,
+      "name": "行走",
+      "move": {
+        "loop": true,
+        "bounce": true,
+        "segments": [
+          {
+            "dir": 180,
+            "speed": 80,
+            "ms": 2000
+          }
+        ],
+        "facing": "left"
+      }
+    },
     "action3": {
       "dir": "wark/entry",
       "fps": 24,
@@ -33,100 +91,6 @@
         ],
         "facing": "left"
       }
-    },
-    "action2": {
-      "dir": "wark/base",
-      "fps": 24,
-      "name": "行走",
-      "move": {
-        "loop": true,
-        "bounce": true,
-        "segments": [
-          {
-            "dir": 180,
-            "speed": 80,
-            "ms": 2000
-          }
-        ],
-        "facing": "left"
-      }
-    },
-    "action1": {
-      "dir": "fly",
-      "fps": 24,
-      "name": "飞行",
-      "offsetY": 0.188,
-      "scale": 1.45,
-      "move": {
-        "loop": true,
-        "bounce": true,
-        "segments": [
-          {
-            "dir": 315,
-            "speed": 120,
-            "ms": 2000
-          }
-        ]
-      }
-    },
-    "idleBreathe": {
-      "dir": "idle/breathe",
-      "fps": 24,
-      "name": "待机呼吸",
-      "yoyo": true
-    },
-    "idleBlink": {
-      "dir": "idle/blink",
-      "fps": 24,
-      "name": "眨眼"
-    },
-    "idleTail": {
-      "dir": "idle/tail",
-      "fps": 24,
-      "name": "摇尾巴"
-    },
-    "idleEar": {
-      "dir": "idle/ear",
-      "fps": 24,
-      "name": "抖耳朵"
-    },
-    "feed": {
-      "dir": "idle/feed",
-      "fps": 24,
-      "name": "投喂"
-    },
-    "wink": {
-      "dir": "idle/wink",
-      "fps": 24,
-      "name": "wink"
-    },
-    "lieDown": {
-      "dir": "sleep/lieDown",
-      "fps": 36,
-      "name": "趴下"
-    },
-    "wakeUp": {
-      "dir": "sleep/lieDown",
-      "fps": 36,
-      "name": "起床",
-      "reverse": true
-    },
-    "sleepBreathe": {
-      "dir": "sleep/breathe",
-      "fps": 10,
-      "name": "睡觉呼吸",
-      "yoyo": true
-    },
-    "sleepEar": {
-      "dir": "sleep/ear",
-      "fps": 24,
-      "name": "睡觉抖耳",
-      "yoyo": true
-    },
-    "sleepTail": {
-      "dir": "sleep/tail",
-      "fps": 24,
-      "name": "睡觉摇尾"
     }
   },
   "behaviors": {
@@ -138,26 +102,6 @@
       ],
       "base": "idleBreathe",
       "random": [
-        {
-          "action": "idleBlink",
-          "weight": 5
-        },
-        {
-          "action": "idleTail",
-          "weight": 5
-        },
-        {
-          "action": "idleEar",
-          "weight": 5
-        },
-        {
-          "action": "feed",
-          "weight": 1
-        },
-        {
-          "action": "wink",
-          "weight": 1
-        },
         {
           "action": "__speak",
           "weight": 2,
@@ -203,16 +147,7 @@
         120000
       ],
       "base": "sleepBreathe",
-      "random": [
-        {
-          "action": "sleepEar",
-          "weight": 1
-        },
-        {
-          "action": "sleepTail",
-          "weight": 1
-        }
-      ],
+      "random": [],
       "delay": [
         3000,
         7000
@@ -233,7 +168,7 @@
         3000,
         8000
       ],
-      "name": "飞行"
+      "name": "跳跃"
     },
     "behavior2": {
       "weight": 2,

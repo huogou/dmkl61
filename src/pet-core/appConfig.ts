@@ -5,7 +5,7 @@ import { ref } from 'vue'
  * 是否隐藏「新增小猫」与切换入口（单猫模式）。
  * 默认 true = 隐藏。
  */
-export const hideAddCat = ref(true)
+export const hideAddCat = ref(false)
 
 /**
  * 是否在动作库里显示「变换」高级参数（X/Y 偏移、缩放）。

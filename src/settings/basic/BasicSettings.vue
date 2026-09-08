@@ -29,7 +29,7 @@
               <Sunny v-if="shownIds.has(cat.id)" />
               <Moon v-else />
             </el-icon>
-            <span>{{ shownIds.has(cat.id) ? '上班中' : '下班了' }}</span>
+            <span>{{ shownIds.has(cat.id) ? '在家' : '出去玩' }}</span>
           </button>
           <div class="cat-card__head">
             <div class="cat-card__avatar-wrap">
@@ -48,7 +48,7 @@
                   :content="
                     shownIds.has(cat.id)
                       ? '点击切换在线 / 隐身'
-                      : '下班中，先上班才能切换'
+                      : '猫猫不在家，先叫回来才能切换'
                   "
                 >
                   <span
