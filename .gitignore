@@ -35,3 +35,5 @@ build*.log
 # 防止 rsync 复制叠层目录污染
 src/src/
 src-tauri/src/src/
+# 原版演示备份（已被 resources/ 与 res_v2 取代，勿入库）
+resources_original/
