@@ -32,8 +32,8 @@ export interface PetActionContext {
   followCursor: Ref<boolean>
   /** 点击穿透开关。 */
   passthrough: Ref<boolean>
-  /** 让猫说一句话（气泡提示）。 */
-  say: (msg: string, ms?: number) => void
+  /** 让猫说一句话（气泡提示）。opts.force=true 时绕过说话冷却（系统提示用）。 */
+  say: (msg: string, ms?: number, opts?: { force?: boolean }) => void
   /**
    * 本次 speak / pokeAndSpeak 动作使用的独立短语池。
    * 由触发源（菜单 / 触发器 / 行为 random）在触发前填入，用完清空。
@@ -137,7 +137,7 @@ export const PET_ACTIONS: Record<string, PetAction> = {
       .then((cats) => {
         const others = cats.filter((id) => id !== ctx.catId)
         if (others.length === 0) {
-          ctx.say('只有我一只猫，和谁打？', 3000)
+          ctx.say('只有我一只猫，和谁打？', 3000, { force: true })
           return
         }
         invoke('pet_start_fight', { cat1Id: ctx.catId, cat2Id: others[0] }).catch(() => {})

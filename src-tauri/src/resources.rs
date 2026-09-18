@@ -94,6 +94,8 @@ pub struct ScanResult {
     manifest: serde_json::Value,
     /// 动作名 → 帧文件绝对路径数组；跟随帧用特殊键 `"follow"`。
     frames: HashMap<String, Vec<String>>,
+    /// 可选：资源根下 normalize.json（逐帧视觉归一化数据）原样返回，无则 Null。
+    normalize: serde_json::Value,
     /// 出错信息：读不到或解析失败时填入，前端据此显示「缺资源引导」。
     error: Option<String>,
 }
@@ -109,6 +111,7 @@ pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
             root: String::new(),
             manifest: serde_json::Value::Null,
             frames: HashMap::new(),
+            normalize: serde_json::Value::Null,
             error: Some("尚未为该猫设置素材目录，请到资源设置选择目录".to_string()),
         };
     };
@@ -122,6 +125,7 @@ pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
                 root: root_str,
                 manifest: serde_json::Value::Null,
                 frames: HashMap::new(),
+                normalize: serde_json::Value::Null,
                 error: Some(format!(
                     "读不到 manifest.json（{}）：{e}",
                     manifest_path.display()
@@ -136,6 +140,7 @@ pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
                 root: root_str,
                 manifest: serde_json::Value::Null,
                 frames: HashMap::new(),
+                normalize: serde_json::Value::Null,
                 error: Some(format!("manifest.json 解析失败：{e}")),
             }
         }
@@ -162,6 +167,14 @@ pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
         }
     }
 
+    // 可选逐帧归一化数据：normalize.json 存在则原样返回，解析失败/缺失视为无（Null）。
+    let normalize_path = root.join("normalize.json");
+    let normalize: serde_json::Value =
+        match std::fs::read_to_string(&normalize_path) {
+            Ok(n) => serde_json::from_str(&n).unwrap_or(serde_json::Value::Null),
+            Err(_) => serde_json::Value::Null,
+        };
+
     let mut frames: HashMap<String, Vec<String>> = HashMap::new();
     for (key, dir) in dirs {
         if Path::new(&dir).is_absolute() {
@@ -181,6 +194,7 @@ pub fn pet_scan_resources(app: tauri::AppHandle, cat_id: String) -> ScanResult {
         root: root_str,
         manifest,
         frames,
+        normalize,
         error: None,
     }
 }

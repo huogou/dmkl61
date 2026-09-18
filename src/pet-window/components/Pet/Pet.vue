@@ -113,6 +113,7 @@ import {
   actionOfFrame,
   transformOfAction,
   moveOfAction,
+  normalizeOfFrame,
 } from '../../../pet-core/clips'
 import { useWalk } from '../../composables/useWalk'
 import {
@@ -261,19 +262,37 @@ const menuStyle = computed(() => ({
 // 偏移以精灵直径(200*size)为基准换算成像素，故缩放滑块拉动时相对位置不变；
 // 缩放以底部中心为锚（猫脚不动、向上伸缩）。变换只作用在 <img> 视觉层，
 // 不影响外层 wrap 的点击命中、菜单锚点与 Rust 注视计算。
+// 若该帧命中 normalize.json 的逐帧归一化（大米/可乐），则动作级变换已烘焙进
+// 归一化值（s 含 scale、dx/dy 含 offset），直接采用，不再叠加 transformOfAction；
+// 归一化目标水平居中（dx 翻转时取反），仅行走等移动动作会随方向 autoFlip。
 const spriteTransform = computed(() => {
-  const t = transformOfAction(actionOfFrame(currentSrc.value))
+  const url = currentSrc.value
+  const n = normalizeOfFrame(url)
   const base = 200 * size.value
-  const tx = Math.round(base * t.offsetX)
-  const ty = Math.round(base * t.offsetY)
   const px = Math.round(200 * size.value)
   // 水平翻转 = 视觉镜像(baseFlip) XOR (移动方向与 moveFacing 不一致)：
   //   静止动作无 move，autoFlip=false，翻转由 baseFlip 决定；移动时方向不一致再翻一次。
   //   heading 在停顿段(speed=0)也按段 dir 更新，故「先停再走」不会停顿期翻反。
-  // scaleX(-1) 写在最右边（= 最先作用于元素），故偏移量 tx 仍按屏幕方向理解。
+  // scaleX(-1) 写在最右边（= 最先作用于元素），故偏移量仍按屏幕方向理解。
   const moveFacing =
-    moveOfAction(actionOfFrame(currentSrc.value))?.facing ?? 'right'
+    moveOfAction(actionOfFrame(url))?.facing ?? 'right'
   const autoFlip = walk.moving.value && walk.heading.value !== moveFacing
+  if (n) {
+    // 归一化帧：dx 为水平居中偏移，镜像播放时取反（绕盒中心镜像）。
+    const flip = autoFlip ? ' scaleX(-1)' : ''
+    const tx = Math.round(base * (autoFlip ? -n.dx : n.dx))
+    const ty = Math.round(base * n.dy)
+    return {
+      width: `${px}px`,
+      height: `${px}px`,
+      opacity: `${opacity.value}`,
+      transform: `translate(${tx}px, ${ty}px) scale(${n.s})${flip}`,
+      transformOrigin: 'bottom center',
+    }
+  }
+  const t = transformOfAction(actionOfFrame(url))
+  const tx = Math.round(base * t.offsetX)
+  const ty = Math.round(base * t.offsetY)
   const flip = t.flip !== autoFlip ? ' scaleX(-1)' : ''
   return {
     width: `${px}px`,
@@ -577,8 +596,49 @@ function openUpdatePage() {
 const speech = ref('')
 let speechTimer: number | undefined
 
-/** 让猫说一句话（或显示一条轻提示），停留 ms 毫秒后消失。 */
-function say(msg: string, ms = 3000) {
+/**
+ * 猫说话冷却：同一只猫两次气泡至少间隔 12 秒。
+ * 防止随机插播、点击摸猫、动作切换等触发源连续弹气泡，让说话像"偶尔发生"。
+ */
+const SPEAK_COOLDOWN_MS = 12000
+/**
+ * 跨猫全局说话节流：任意一只猫说过话后 5 秒内，其他猫不再说话。
+ * 多猫窗口共享 localStorage（同一 WebView2 user data），低成本避免三猫连续刷屏。
+ */
+const GLOBAL_SPEAK_WINDOW_MS = 5000
+const GLOBAL_SPEAK_KEY = 'dmkl61-last-speak-at'
+
+/** 本窗口（本猫）上一次说话时间。 */
+let lastSpeakAt = 0
+
+/**
+ * 让猫说一句话（或显示一条轻提示），停留 ms 毫秒后消失。
+ * 猫说话（speak/pokeAndSpeak/随机插播）走冷却：冷却期内静默跳过；
+ * 系统提示（校准完成/穿透切换/打架提示等）传 opts.force=true 绕过冷却。
+ */
+function say(
+  msg: string,
+  ms = 3000,
+  opts: { force?: boolean } = {},
+) {
+  const now = Date.now()
+  if (!opts.force) {
+    // 同猫冷却：12 秒内不重复说话。
+    if (now - lastSpeakAt < SPEAK_COOLDOWN_MS) return
+    // 跨猫节流：最近 5 秒内其他猫说过话则跳过本次，避免三猫气泡刷屏。
+    try {
+      const globalAt = Number(localStorage.getItem(GLOBAL_SPEAK_KEY) || 0)
+      if (now - globalAt < GLOBAL_SPEAK_WINDOW_MS) return
+    } catch {
+      // localStorage 不可用时忽略全局节流，仅保留同猫冷却。
+    }
+    lastSpeakAt = now
+    try {
+      localStorage.setItem(GLOBAL_SPEAK_KEY, String(now))
+    } catch {
+      // 写入失败不影响本次说话。
+    }
+  }
   speech.value = msg
   if (speechTimer) clearTimeout(speechTimer)
   speechTimer = window.setTimeout(() => {
@@ -588,10 +648,10 @@ function say(msg: string, ms = 3000) {
 
 /**
  * 轻提示：复用猫说话的云朵气泡显示一条短消息。
- * 与 `say` 同一朵云，避免再单独维护一套 toast 机制。
+ * 系统提示必须可见，绕过说话冷却。
  */
 function showToast(msg: string, ms = 1800) {
-  say(msg, ms)
+  say(msg, ms, { force: true })
 }
 
 // ── 快捷键 ───────────────────────────────────────────────────────

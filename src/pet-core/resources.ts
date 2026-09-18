@@ -109,6 +109,16 @@ export interface FollowConfig {
   startAngle: number
 }
 
+/** 逐帧视觉归一化：把猫体稳定到固定位置/尺寸（见 normalize.json 生成脚本）。 */
+export interface FrameNormalize {
+  /** 总缩放系数（含动作级 scale），以盒底中为锚。 */
+  s: number
+  /** 水平平移（占精灵直径比例）；翻转播放时取反。 */
+  dx: number
+  /** 垂直平移（占精灵直径比例）。 */
+  dy: number
+}
+
 /** 解析后的完整资源模型。 */
 interface ResourceModel {
   /** 资源根目录绝对路径（排错用）。 */
@@ -123,6 +133,8 @@ interface ResourceModel {
   follow: FollowConfig | null
   /** 帧 URL → 所属动作名，供视觉变换反查。 */
   frameToAction: Map<string, string>
+  /** 帧 URL → 归一化参数；无归一化数据的动作不在表内。 */
+  frameNormalize: Map<string, FrameNormalize>
 }
 
 /** 后端 `pet_scan_resources` 的返回结构。 */
@@ -130,6 +142,7 @@ interface ScanResult {
   root: string
   manifest: any
   frames: Record<string, string[]>
+  normalize: any
   error: string | null
 }
 
@@ -213,6 +226,23 @@ function preload(urls: string[]) {
   }
 }
 
+/** 取路径最后一段文件名（兼容 / 与 \）。 */
+function baseName(p: string): string {
+  return p.split(/[\\/]/).pop() ?? ''
+}
+
+/** 规整归一化条目；非法则返回 null。 */
+function normItem(v: any): FrameNormalize | null {
+  if (!v || typeof v !== 'object') return null
+  const s = Number(v.s)
+  const dx = Number(v.dx)
+  const dy = Number(v.dy)
+  if (!Number.isFinite(s) || !Number.isFinite(dx) || !Number.isFinite(dy)) {
+    return null
+  }
+  return { s, dx, dy }
+}
+
 /**
  * 加载并解析外置资源。成功时填充模块级 `model` 并返回 { ok:true }；
  * 任何一步失败（扫描出错、缺 manifest、缺 idle 行为）返回 { ok:false, error }。
@@ -238,13 +268,33 @@ export async function loadResources(): Promise<LoadResult> {
     urls[key] = paths.map((p) => convertFileSrc(p))
   }
 
+  // 1.5) 逐帧归一化数据：normalize.json 的 actions 为 {动作名: [{s,dx,dy},...]}，
+  // 数组与「目录扫描顺序」对齐（与 scan.frames 的路径数组一一对应）。
+  const rawNormalize = (scan.normalize?.actions ?? {}) as Record<
+    string,
+    any[] | undefined
+  >
+
   // 2) 解析动作库。
   const actions: Record<string, ResolvedClip> = {}
   const frameToAction = new Map<string, string>()
+  const frameNormalize = new Map<string, FrameNormalize>()
   const rawActions = (manifest.actions ?? {}) as Record<string, any>
   for (const [name, def] of Object.entries(rawActions)) {
-    let frames = urls[name] ?? []
-    if (def?.reverse) frames = [...frames].reverse()
+    // 帧白名单（可选）：manifest 动作级 "frames" 指定只播这些文件（按文件名过滤）。
+    // 用于在素材冻结前提下裁剪劣质帧段（如可乐行走前段的噪块/破损帧）。
+    let rawPaths = scan.frames[name] ?? []
+    let norm = rawNormalize[name] ?? null
+    if (Array.isArray(def?.frames) && def.frames.length > 0) {
+      const wl = new Set(def.frames.map((f: unknown) => String(f).toLowerCase()))
+      rawPaths = rawPaths.filter((p) => wl.has(baseName(p).toLowerCase()))
+      if (norm && norm.length !== rawPaths.length) norm = null
+    }
+    let frames = rawPaths.map((p) => convertFileSrc(p))
+    if (def?.reverse) {
+      frames = [...frames].reverse()
+      if (norm) norm = [...norm].reverse()
+    }
     if (frames.length === 0) continue // 没有帧的动作直接跳过
     const move = parseMove(def?.move)
     // facing 归 move：移动方向与它比较决定是否翻转。兼容旧版 facing 写在 action 级--
@@ -266,8 +316,12 @@ export async function loadResources(): Promise<LoadResult> {
       flip: !!def?.flip,
       move,
     }
-    for (const u of frames)
+    for (let i = 0; i < frames.length; i++) {
+      const u = frames[i]
       if (!frameToAction.has(u)) frameToAction.set(u, name)
+      const item = norm?.[i] != null ? normItem(norm[i]) : null
+      if (item) frameNormalize.set(u, item)
+    }
   }
 
   // 3) 解析跟随配置（无 follow 素材则 null）。
@@ -292,8 +346,11 @@ export async function loadResources(): Promise<LoadResult> {
             clip: r?.action,
             weight: r?.weight,
             // __speak 的独立短语池原样带出（数组校验 + 基础规整）。
+            // 注意：manifest 的 random 项字段是 action（下方 clip 从 r.action 取），
+            // 判断内置说话项必须用 r.action；用 r.clip 会永远取不到（既有 bug：
+            // 所有 __speak 的 phrases 曾因此被丢弃、随机说话一直回退全局说话内容）。
             phrases:
-              Array.isArray(r?.phrases) && r.clip === '__speak'
+              Array.isArray(r?.phrases) && r?.action === '__speak'
                 ? r.phrases
                     .filter((p: any) => p && typeof p.text === 'string')
                     .map((p: any) => ({
@@ -355,6 +412,7 @@ export async function loadResources(): Promise<LoadResult> {
     behaviors,
     follow,
     frameToAction,
+    frameNormalize,
     defaultBehavior,
   }
   return { ok: true }

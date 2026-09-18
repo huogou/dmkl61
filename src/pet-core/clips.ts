@@ -4,9 +4,14 @@
  * 旧版在这里用「大序列切区间」定义片段；现在每个动作是一个独立帧文件夹，
  * 由 manifest.json 的 actions 声明、由 store 解析，这里只做读取与小工具封装。
  */
-import { getModel, type ResolvedClip, type MoveSpec } from './resources'
+import {
+  getModel,
+  type ResolvedClip,
+  type MoveSpec,
+  type FrameNormalize,
+} from './resources'
 
-export type { ResolvedClip, MoveSpec }
+export type { ResolvedClip, MoveSpec, FrameNormalize }
 export type { MoveSegment } from './resources'
 
 /** 取一个动作；不存在返回 undefined。 */
@@ -60,6 +65,15 @@ export function transformOfAction(name: string | undefined): SourceTransform {
 /** 由帧 URL 反查它属于哪个动作；不属于任何动作（如跟随帧）时返回 undefined。 */
 export function actionOfFrame(url: string): string | undefined {
   return getModel().frameToAction.get(url)
+}
+
+/**
+ * 取某帧的逐帧归一化参数（normalize.json 提供）；无归一化数据的帧返回 null。
+ * 命中时，动作级视觉变换（offsetX/offsetY/scale）已烘焙进 s/dx/dy，
+ * 调用方应直接使用归一化值，不再叠加 transformOfAction。
+ */
+export function normalizeOfFrame(url: string): FrameNormalize | null {
+  return getModel().frameNormalize.get(url) ?? null
 }
 
 /**
