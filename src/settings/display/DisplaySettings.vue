@@ -91,6 +91,13 @@
             </span>
           </el-form-item>
 
+          <el-form-item label="开机启动">
+            <el-switch :model-value="autoStart" @change="onAutoStartChange" />
+            <span class="display-settings__switch-desc">
+              开启后登录 Windows 自动运行桌宠
+            </span>
+          </el-form-item>
+
           <el-form-item label="猫头校准">
             <el-button :icon="Aim" @click="onCalibrate">校准猫头</el-button>
             <span class="display-settings__switch-desc">
@@ -327,6 +334,25 @@ function onCatChange() {
   })
 }
 
+// ── 开机启动（应用级：autostart 插件管理系统注册表 Run 键，非按猫配置）──
+const autoStart = ref(false)
+
+async function onAutoStartChange(value: string | number | boolean) {
+  const on = Boolean(value)
+  try {
+    if (on) {
+      await enable()
+    } else {
+      await disable()
+    }
+    autoStart.value = on
+    ElMessage.success(on ? '已开启开机启动' : '已关闭开机启动')
+  } catch (e) {
+    autoStart.value = !on
+    ElMessage.error(`设置开机启动失败：${e}`)
+  }
+}
+
 // ── 跟随光标 / 校准 ──
 /** 跟随光标开关：改 ref + 走 display 广播（对应猫窗实时生效 + appSettings 监听写盘）。 */
 function onFollowChange(value: string | number | boolean) {
@@ -357,6 +383,7 @@ import {
   Operation,
 } from '@element-plus/icons-vue'
 import { register, unregister } from '@tauri-apps/plugin-global-shortcut'
+import { isEnabled, enable, disable } from '@tauri-apps/plugin-autostart'
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event'
 import PhraseConfigDialog from './PhraseConfigDialog.vue'
 import MenuConfigDialog from './MenuConfigDialog.vue'
@@ -612,6 +639,12 @@ async function probeAndMark(b: TriggerBinding): Promise<void> {
 }
 
 onMounted(async () => {
+  // 读取当前开机自启状态，回显到设置页开关。
+  try {
+    autoStart.value = await isEnabled()
+  } catch {
+    // 插件不可用时保持关闭态。
+  }
   loadManifestNames().then((names) => {
     actionItems.value = names.actions
     behaviorItems.value = names.behaviors

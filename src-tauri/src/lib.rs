@@ -26,6 +26,7 @@ mod window;
 use std::sync::Mutex;
 
 use tauri::Manager;
+use tauri_plugin_autostart::ManagerExt;
 
 use state::{DownloadState, PetState};
 
@@ -35,7 +36,12 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // 全局快捷键插件。具体按键由前端按用户配置经 JS 插件 API
         //（@tauri-apps/plugin-global-shortcut）注册，故此处无需 Rust 端 handler。
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        // 开机自启插件：默认开启（写入注册表 Run 键），前端设置页可关闭。
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ));
 
     // 单实例锁：第二个实例启动时聚焦主窗，而非新开进程。
     // 多猫=单进程多窗口，仍禁止开第二个应用进程。
@@ -163,6 +169,10 @@ pub fn run() {
         .setup(|app| {
             // 构建系统托盘（图标 + 菜单 + 左键显隐）。
             tray::build_tray(app.handle())?;
+
+            // 开机自启：默认开启（幂等，写入注册表 Run 键），
+            // 用户可在设置页「显示与交互 → 开机启动」关闭。
+            let _ = app.autolaunch().enable();
 
             // 给设置主窗设置高清默认图标（256×256），避免任务栏/标题栏图标模糊。
             // 若用户设过自定义图标，下面的 load_custom_icon 会再覆盖。
