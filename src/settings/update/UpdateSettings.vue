@@ -22,8 +22,11 @@
   <div class="gallery">
     <div v-for="cat in cats" :key="cat.id" class="gallery-row">
       <div class="gallery-cat">
-        <div class="gallery-cat__name">{{ cat.name }}</div>
-        <div class="gallery-cat__age">{{ cat.age }}</div>
+        <img :src="gallery[cat.id]?.idle" class="gallery-cat__avatar" :alt="cat.name" />
+        <div class="gallery-cat__info">
+          <div class="gallery-cat__name">{{ cat.name }}</div>
+          <span class="gallery-cat__badge" :class="'badge-'+cat.id">{{ cat.age }}</span>
+        </div>
       </div>
       <div class="gallery-figs">
         <template v-for="act in actionOrder" :key="act">
@@ -36,6 +39,13 @@
     </div>
   </div>
 </el-card>
+
+      <!-- 寄语 -->
+<div class="envelope">
+  <span class="envelope__heart">❤</span>
+  <span>这只桌面上的小世界，是用心做出来的礼物。</span>
+  <span class="envelope__heart">❤</span>
+</div>
 
       <!-- 程序图标 -->
       <el-card shadow="never" class="block">
@@ -461,13 +471,27 @@ onUnmounted(() => {
 
 .gallery { display: flex; flex-direction: column; gap: 14px; }
 .gallery-row { display: flex; align-items: center; gap: 14px; }
-.gallery-cat { width: 64px; flex-shrink: 0; }
-.gallery-cat__name { font-size: 15px; font-weight: 600; color: #4a3520; }
-.gallery-cat__age { font-size: 11px; color: #a07848; margin-top: 2px; }
 .gallery-figs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .gallery-item { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .gallery-img { width: 88px; height: 88px; object-fit: contain; border-radius: 10px; background: #fff8ee; box-shadow: 0 2px 6px rgba(180,130,80,0.12); }
 .gallery-item figcaption { font-size: 11px; color: #8a6239; }
+
+.gallery-cat { display: flex; align-items: center; gap: 8px; width: 110px; flex-shrink: 0; }
+.gallery-cat__avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #fff8ee; box-shadow: 0 2px 6px rgba(180,130,80,0.15); }
+.gallery-cat__info { display: flex; flex-direction: column; gap: 3px; }
+.gallery-cat__name { font-size: 15px; font-weight: 600; color: #4a3520; line-height: 1; }
+.gallery-cat__badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; color: #fff; width: fit-content; }
+.badge-liuyi { background: #e8923c; }
+.badge-dami { background: #e89bb8; }
+.badge-kele { background: #7ba7d9; }
+.gallery-item { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gallery-img { width: 88px; height: 88px; object-fit: contain; border-radius: 10px; background: #fff8ee; box-shadow: 0 2px 6px rgba(180,130,80,0.12); transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.gallery-item:hover .gallery-img { transform: scale(1.12); box-shadow: 0 6px 14px rgba(180,130,80,0.28); }
+.gallery-item figcaption { font-size: 11px; color: #8a6239; }
+.family-banner__img { height: 150px; width: auto; object-fit: contain; flex-shrink: 0; animation: catsFloat 3.5s ease-in-out infinite; }
+@keyframes catsFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.envelope { text-align: center; padding: 18px 12px; font-size: 14px; color: #a07848; letter-spacing: 0.5px; }
+.envelope__heart { color: #e89bb8; margin: 0 8px; }
 
 .about-card {
   display: flex;
