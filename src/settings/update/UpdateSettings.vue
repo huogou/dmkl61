@@ -16,6 +16,25 @@
         </div>
       </div>
 
+      <!-- 三猫日常照片墙 -->
+<el-card shadow="never" class="block">
+  <template #header><span class="card-title">三猫日常</span></template>
+  <div class="gallery">
+    <div v-for="cat in cats" :key="cat.id" class="gallery-row">
+      <div class="gallery-cat">
+        <div class="gallery-cat__name">{{ cat.name }}</div>
+        <div class="gallery-cat__age">{{ cat.age }}</div>
+      </div>
+      <div class="gallery-figs">
+        <figure v-for="act in actionOrder" v-if="gallery[cat.id]?.[act]" :key="act" class="gallery-item">
+          <img :src="gallery[cat.id][act]" :alt="actionLabels[act]" class="gallery-img" />
+          <figcaption>{{ actionLabels[act] }}</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</el-card>
+
       <!-- 程序图标 -->
       <el-card shadow="never" class="block">
         <template #header>
@@ -110,6 +129,22 @@ import { convertFileSrc } from '@tauri-apps/api/core'
 
 // 三猫合影横幅（六一/大米/可乐），打包进静态资源。
 const catsFamilyUrl = new URL('../../assets/cats-family.png', import.meta.url).href
+
+// 三猫日常照片墙：批量加载 gallery 下所有动作帧。
+const galleryModules = import.meta.glob('../../assets/gallery/**/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
+const gallery: Record<string, Record<string, string>> = {}
+for (const [p, u] of Object.entries(galleryModules)) {
+  const m = p.match(/gallery\/([^/]+)\/([^/]+)\.webp$/)
+  if (!m) continue
+  ;(gallery[m[1]] ||= {})[m[2]] = u
+}
+const actionLabels: Record<string, string> = { idle: '待机', sleep: '睡觉', walk: '走路', fly: '跳跃', follow: '跟随' }
+const actionOrder = ['idle', 'sleep', 'walk', 'fly', 'follow']
+const cats = [
+  { id: 'liuyi', name: '六一', age: '7岁大哥' },
+  { id: 'dami', name: '大米', age: '4岁妹妹' },
+  { id: 'kele', name: '可乐', age: '4岁妹妹' },
+]
 
 // 默认图标（打包时静态资源）：未自定义时使用。
 const defaultIconUrl = new URL('../../assets/icon.png', import.meta.url).href
@@ -421,6 +456,16 @@ onUnmounted(() => {
 .family-banner__version { margin-top: 4px; font-size: 13px; color: #a07848; }
 .family-banner__line { margin-top: 10px; font-size: 13px; color: #8a6239; letter-spacing: 0.5px; }
 .family-banner__img { height: 150px; width: auto; object-fit: contain; flex-shrink: 0; }
+
+.gallery { display: flex; flex-direction: column; gap: 14px; }
+.gallery-row { display: flex; align-items: center; gap: 14px; }
+.gallery-cat { width: 64px; flex-shrink: 0; }
+.gallery-cat__name { font-size: 15px; font-weight: 600; color: #4a3520; }
+.gallery-cat__age { font-size: 11px; color: #a07848; margin-top: 2px; }
+.gallery-figs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+.gallery-item { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.gallery-img { width: 88px; height: 88px; object-fit: contain; border-radius: 10px; background: #fff8ee; box-shadow: 0 2px 6px rgba(180,130,80,0.12); }
+.gallery-item figcaption { font-size: 11px; color: #8a6239; }
 
 .about-card {
   display: flex;
