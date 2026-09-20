@@ -1,6 +1,6 @@
 [package]
 name = "dmkl61"
-version = "0.3.1"
+version = "0.3.2"
 description = "桌宠：大米 / 可乐 / 六一"
 authors = ["huogou"]
 edition = "2021"
