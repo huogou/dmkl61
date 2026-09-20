@@ -43,7 +43,7 @@
       <!-- 寄语 -->
 <div class="envelope">
   <span class="envelope__heart">❤</span>
-  <span>这只桌面上的小世界，是用心做出来的礼物。</span>
+  <span>这个桌面上的小世界，是用心做出来的礼物。</span>
   <span class="envelope__heart">❤</span>
 </div>
 
