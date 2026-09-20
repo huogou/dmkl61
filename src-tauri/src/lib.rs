@@ -100,6 +100,7 @@ pub fn run() {
             downloader::pet_download_resources,
             icon::pet_save_icon,
             icon::pet_reset_icon,
+            icon::pet_app_icon_url,
             updater::pet_app_version,
             updater::pet_update_check,
             updater::pet_update_download,

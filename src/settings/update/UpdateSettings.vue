@@ -6,7 +6,7 @@
       <!-- 应用信息 -->
       <el-card shadow="never" class="block">
         <div class="about-card">
-          <img :src="appIcon" class="about-card__icon" alt="应用图标" />
+          <img :src="appIconUrl" class="about-card__icon" alt="应用图标" />
           <div class="about-card__meta">
             <div class="about-card__name">dmkl61</div>
             <div class="about-card__version">桌宠 · v{{ current || '…' }}</div>
@@ -14,28 +14,21 @@
         </div>
       </el-card>
 
-      <!-- 自定义头像 -->
+      <!-- 程序图标 -->
       <el-card shadow="never" class="block">
         <template #header>
-          <span class="card-title">自定义头像</span>
+          <span class="card-title">程序图标</span>
         </template>
 
         <div class="avatar-section">
           <div class="avatar-preview">
             <img
-              v-if="avatarUrl"
-              :src="avatarUrl"
+              :src="appIconUrl"
               class="avatar-img"
-              alt="当前头像"
-            />
-            <img
-              v-else
-              :src="appIcon"
-              class="avatar-img avatar-img--default"
-              alt="默认头像"
+              alt="当前程序图标"
             />
             <div class="avatar-label">
-              {{ avatarUrl ? '当前自定义头像' : '默认头像（未自定义）' }}
+              {{ hasCustomIcon ? '当前自定义程序图标' : '默认图标（未自定义）' }}
             </div>
           </div>
 
@@ -55,14 +48,7 @@
               {{ uploading ? '上传中...' : '选择图片上传' }}
             </el-button>
             <el-button
-              v-if="avatarUrl"
-              @click="onApplyIcon"
-              :loading="applying"
-            >
-              {{ applying ? '设置中...' : '设为程序图标' }}
-            </el-button>
-            <el-button
-              v-if="avatarUrl"
+              v-if="hasCustomIcon"
               type="danger"
               plain
               @click="onReset"
@@ -72,8 +58,8 @@
           </div>
 
           <div class="avatar-tip">
-            上传图片后将作为头像显示在设置页和宠物窗口。<br />
-            点击「设为程序图标」可同步更新任务栏和窗口图标。
+            上传后直接设为任务栏 / 窗口 / 托盘程序图标。<br />
+            每只猫自己的头像在「基础设置」里单独设置，互不影响。
           </div>
         </div>
       </el-card>
@@ -118,19 +104,34 @@ import {
   Close,
 } from '@element-plus/icons-vue'
 import SettingsHeader from '../common/SettingsHeader.vue'
-import {
-  avatarUrl,
-  saveAvatar,
-  resetAvatar,
-  applyAvatarAsIcon,
-} from '../../pet-core/appSettings'
+import { convertFileSrc } from '@tauri-apps/api/core'
 
-const appIcon = new URL('../../assets/icon.png', import.meta.url).href
+// 默认图标（打包时静态资源）：未自定义时使用。
+const defaultIconUrl = new URL('../../assets/icon.png', import.meta.url).href
+/** 当前程序图标 URL：有自定义 app-icon.png 时读运行时文件，否则用默认。 */
+const appIconUrl = ref(defaultIconUrl)
+/** 是否有自定义程序图标（控制"恢复默认"按钮显隐）。 */
+const hasCustomIcon = ref(false)
 
-// ── 头像上传 ──────────────────────────────────
+/** 从后端读当前 app-icon.png 路径，刷新预览。 */
+async function refreshAppIcon() {
+  try {
+    const p = await invoke<string>('pet_app_icon_url')
+    if (p) {
+      appIconUrl.value = `${convertFileSrc(p)}?t=${Date.now()}`
+      hasCustomIcon.value = true
+    } else {
+      appIconUrl.value = defaultIconUrl
+      hasCustomIcon.value = false
+    }
+  } catch {
+    // 静默：读不到就用默认
+  }
+}
+
+// ── 程序图标上传 ─────────────────────────────
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
-const applying = ref(false)
 
 function onFileSelected(e: Event) {
   const target = e.target as HTMLInputElement
@@ -147,10 +148,12 @@ function onFileSelected(e: Event) {
   const reader = new FileReader()
   reader.onload = async () => {
     try {
-      await saveAvatar(reader.result as string)
-      ElMessage.success('头像上传成功')
+      // 直接存为全局程序图标（app-icon.png），一步到位。
+      await invoke('pet_save_icon', { data: reader.result as string })
+      await refreshAppIcon()
+      ElMessage.success('已设为程序图标')
     } catch (err) {
-      ElMessage.error(`上传失败：${err}`)
+      ElMessage.error(`设置失败：${err}`)
     } finally {
       uploading.value = false
       target.value = ''
@@ -164,22 +167,11 @@ function onFileSelected(e: Event) {
   reader.readAsDataURL(file)
 }
 
-async function onApplyIcon() {
-  applying.value = true
-  try {
-    await applyAvatarAsIcon()
-    ElMessage.success('已设为程序图标')
-  } catch (err) {
-    ElMessage.error(`设置失败：${err}`)
-  } finally {
-    applying.value = false
-  }
-}
-
 async function onReset() {
   try {
-    await resetAvatar()
-    ElMessage.success('已恢复默认头像')
+    await invoke('pet_reset_icon')
+    await refreshAppIcon()
+    ElMessage.success('已恢复默认图标')
   } catch (err) {
     ElMessage.error(`恢复失败：${err}`)
   }
@@ -349,6 +341,8 @@ onMounted(async () => {
   } catch {
     // 取本地版本理论上不会失败
   }
+  // 读当前自定义程序图标（若有）刷新预览。
+  await refreshAppIcon()
   await loadCachedResult()
   await restoreDownloadState()
 

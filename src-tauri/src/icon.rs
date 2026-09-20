@@ -110,3 +110,17 @@ pub fn load_custom_icon(app: &tauri::AppHandle) {
         }
     }
 }
+
+/// 返回当前自定义程序图标（app-icon.png）的绝对路径；不存在返回空串。
+/// 供"关于"页预览程序图标用——读运行时文件，不再用打包时写死的静态图。
+#[tauri::command]
+pub fn pet_app_icon_url(app: tauri::AppHandle) -> String {
+    let Some(path) = icon_path(&app) else {
+        return String::new();
+    };
+    if path.exists() {
+        path.display().to_string()
+    } else {
+        String::new()
+    }
+}
