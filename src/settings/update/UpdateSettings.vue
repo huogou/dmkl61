@@ -31,7 +31,7 @@
       <div class="gallery-figs">
         <template v-for="act in actionOrder" :key="act">
           <figure v-if="gallery[cat.id]?.[act]" class="gallery-item">
-            <img :src="gallery[cat.id][act]" :alt="actionLabels[act]" class="gallery-img" />
+            <img :src="gallery[cat.id][act]" :alt="actionLabels[act]" class="gallery-img" @click="previewUrl = gallery[cat.id][act]" />
             <figcaption>{{ actionLabels[act] }}</figcaption>
           </figure>
         </template>
@@ -123,6 +123,11 @@
           </div>
         </div>
       </el-card>
+  <!-- 点击放大遮罩 -->
+  <div v-if="previewUrl" class="preview-mask" @click.self="previewUrl = ''">
+    <img :src="previewUrl" class="preview-img" />
+  </div>
+
     </main>
   </div>
 </template>
@@ -157,6 +162,9 @@ const cats = [
   { id: 'dami', name: '大米', age: '4岁妹妹' },
   { id: 'kele', name: '可乐', age: '4岁妹妹' },
 ]
+
+// 点击缩略图放大预览；空串表示关闭。
+const previewUrl = ref('')
 
 // 默认图标（打包时静态资源）：未自定义时使用。
 const defaultIconUrl = new URL('../../assets/icon.png', import.meta.url).href
@@ -492,6 +500,9 @@ onUnmounted(() => {
 @keyframes catsFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 .envelope { text-align: center; padding: 18px 12px; font-size: 14px; color: #a07848; letter-spacing: 0.5px; }
 .envelope__heart { color: #e89bb8; margin: 0 8px; }
+
+.preview-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 9999; cursor: zoom-out; }
+.preview-img { max-width: 80vw; max-height: 80vh; border-radius: 16px; background: #fff; box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
 
 .about-card {
   display: flex;
