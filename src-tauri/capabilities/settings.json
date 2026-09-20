@@ -8,6 +8,9 @@
     "core:event:default",
     "core:window:allow-close",
     "core:window:allow-minimize",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }
