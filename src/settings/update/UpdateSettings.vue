@@ -3,16 +3,18 @@
     <SettingsHeader title="关于" />
 
     <main class="update-settings__body">
-      <!-- 应用信息 -->
-      <el-card shadow="never" class="block">
-        <div class="about-card">
-          <img :src="appIconUrl" class="about-card__icon" alt="应用图标" />
-          <div class="about-card__meta">
-            <div class="about-card__name">dmkl61</div>
-            <div class="about-card__version">桌宠 · v{{ current || '…' }}</div>
+      <!-- 三猫照片墙横幅 -->
+      <div class="family-banner">
+        <div class="family-banner__bg"></div>
+        <div class="family-banner__inner">
+          <div class="family-banner__text">
+            <div class="family-banner__title">dmkl61</div>
+            <div class="family-banner__version">桌宠 · v{{ current || '…' }}</div>
+            <div class="family-banner__line">六一 · 大米 · 可乐，陪你每一天</div>
           </div>
+          <img :src="catsFamilyUrl" class="family-banner__img" alt="六一、大米、可乐" />
         </div>
-      </el-card>
+      </div>
 
       <!-- 程序图标 -->
       <el-card shadow="never" class="block">
@@ -105,6 +107,9 @@ import {
 } from '@element-plus/icons-vue'
 import SettingsHeader from '../common/SettingsHeader.vue'
 import { convertFileSrc } from '@tauri-apps/api/core'
+
+// 三猫合影横幅（六一/大米/可乐），打包进静态资源。
+const catsFamilyUrl = new URL('../../assets/cats-family.png', import.meta.url).href
 
 // 默认图标（打包时静态资源）：未自定义时使用。
 const defaultIconUrl = new URL('../../assets/icon.png', import.meta.url).href
@@ -396,6 +401,26 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 15px;
 }
+
+.family-banner {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 180px;
+  box-shadow: 0 4px 16px rgba(230, 180, 120, 0.18);
+}
+.family-banner__bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, #fff6e8 0%, #ffe8cc 55%, #ffd9b0 100%);
+}
+.family-banner__inner {
+  position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding: 20px 24px 0; gap: 12px;
+}
+.family-banner__text { padding-bottom: 20px; flex-shrink: 0; }
+.family-banner__title { font-size: 26px; font-weight: 700; color: #6b4423; letter-spacing: 1px; }
+.family-banner__version { margin-top: 4px; font-size: 13px; color: #a07848; }
+.family-banner__line { margin-top: 10px; font-size: 13px; color: #8a6239; letter-spacing: 0.5px; }
+.family-banner__img { height: 150px; width: auto; object-fit: contain; flex-shrink: 0; }
 
 .about-card {
   display: flex;
