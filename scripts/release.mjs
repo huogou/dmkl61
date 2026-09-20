@@ -1,18 +1,18 @@
 // 一键发版脚本：同步版本号 → 生成 CHANGELOG → 提交打标签 → 推送（触发 CI 构建+发布）。
 //
 // 用法：
-//   pnpm release            # 自动递增 patch，如 0.2.2 → 0.2.3
-//   pnpm release patch      # 自动递增 patch
-//   pnpm release minor      # 自动递增 minor，并把 patch 归 0
-//   pnpm release major      # 自动递增 major，并把 minor/patch 归 0
-//   pnpm release 0.3.5      # 手动指定精确版本号
+//   node scripts/release.mjs            # 自动递增 patch，如 0.3.1 → 0.3.2
+//   node scripts/release.mjs patch      # 自动递增 patch
+//   node scripts/release.mjs minor     # 自动递增 minor，并把 patch 归 0
+//   node scripts/release.mjs major      # 自动递增 major，并把 minor/patch 归 0
+//   node scripts/release.mjs 0.3.5      # 手动指定精确版本号
 //
 // 它会：
 //   1. 校验版本号格式、工作区干净；
 //   2. 把 package.json / src-tauri/tauri.conf.json / src-tauri/Cargo.toml 三处版本同步成新号；
 //   3. 用 git-cliff 把未发布提交归到新版本，更新 CHANGELOG.md（失败则跳过，CI 仍会生成发行说明）；
 //   4. git commit "chore: release vX.Y.Z" + 打标签；
-//   5. 推送 master 与标签到 github（触发 GitHub Actions 构建 zip 并发布 Release），并尽力同步到 gitee。
+//   5. 推送 main 与标签到 origin（GitHub），触发 GitHub Actions 构建 exe + version.json 并发布 Release。
 import { execFileSync, execSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname, resolve } from 'node:path'
@@ -34,7 +34,7 @@ function readPackageVersion() {
   const current = packageJson.version
   if (!/^\d+\.\d+\.\d+$/.test(current)) {
     console.error(`✗ package.json 当前版本号不支持自动递增：${current}`)
-    console.error('  请先改成 x.y.z 格式，或使用 pnpm release x.y.z 手动指定。')
+    console.error('  请先改成 x.y.z 格式，或使用 node scripts/release.mjs x.y.z 手动指定。')
     process.exit(1)
   }
   return current
@@ -55,13 +55,11 @@ function resolveVersion(input) {
   }
 
   console.error('✗ 用法：')
-  console.error('  pnpm release            # 自动递增 patch')
-  console.error('  pnpm release patch      # 自动递增 patch')
-  console.error('  pnpm release minor      # 自动递增 minor，并把 patch 归 0')
-  console.error(
-    '  pnpm release major      # 自动递增 major，并把 minor/patch 归 0',
-  )
-  console.error('  pnpm release 0.3.5      # 手动指定精确版本号')
+  console.error('  node scripts/release.mjs            # 自动递增 patch')
+  console.error('  node scripts/release.mjs patch      # 自动递增 patch')
+  console.error('  node scripts/release.mjs minor      # 自动递增 minor，并把 patch 归 0')
+  console.error('  node scripts/release.mjs major      # 自动递增 major，并把 minor/patch 归 0')
+  console.error('  node scripts/release.mjs 0.3.5      # 手动指定精确版本号')
   process.exit(1)
 }
 
@@ -128,19 +126,11 @@ git(['commit', '-m', `chore: release ${tag}`], { stdio: 'inherit' })
 git(['tag', tag], { stdio: 'inherit' })
 console.log(`✓ 已提交并打标签 ${tag}`)
 
-// 5) 推送：github 触发 CI；gitee 尽力同步。
-console.log('→ 推送到 github（触发 CI 构建 + 发布 Release）...')
-git(['push', 'github', 'master'], { stdio: 'inherit' })
-git(['push', 'github', tag], { stdio: 'inherit' })
-try {
-  git(['push', 'origin', 'master'], { stdio: 'inherit' })
-  git(['push', 'origin', tag], { stdio: 'inherit' })
-} catch {
-  console.warn(
-    '⚠ 推送 gitee 失败（不影响 GitHub 发布），可稍后手动 git push origin master --tags。',
-  )
-}
+// 5) 推送：origin 即 GitHub，push main + tag 触发 CI 构建 exe + version.json 并发布 Release。
+console.log('→ 推送到 origin（GitHub，触发 CI 构建 + 发布 Release）...')
+git(['push', 'origin', 'main'], { stdio: 'inherit' })
+git(['push', 'origin', tag], { stdio: 'inherit' })
 
 console.log(
-  `\n✅ 发版完成 ${tag}！去 GitHub 的 Actions 看构建，完成后 Releases 页面会有 zip + 分类日志。`,
+  `\n✅ 发版完成 ${tag}！去 GitHub 的 Actions 看构建，完成后 Releases 页会有 exe + version.json + zip。`,
 )
