@@ -26,10 +26,12 @@
         <div class="gallery-cat__age">{{ cat.age }}</div>
       </div>
       <div class="gallery-figs">
-        <figure v-for="act in actionOrder" v-if="gallery[cat.id]?.[act]" :key="act" class="gallery-item">
-          <img :src="gallery[cat.id][act]" :alt="actionLabels[act]" class="gallery-img" />
-          <figcaption>{{ actionLabels[act] }}</figcaption>
-        </figure>
+        <template v-for="act in actionOrder" :key="act">
+          <figure v-if="gallery[cat.id]?.[act]" class="gallery-item">
+            <img :src="gallery[cat.id][act]" :alt="actionLabels[act]" class="gallery-img" />
+            <figcaption>{{ actionLabels[act] }}</figcaption>
+          </figure>
+        </template>
       </div>
     </div>
   </div>
