@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "activeCatId": "cmtqqraj5",
+  "cats": {
+    "kele001": {
+      "name": "可乐",
+      "birthday": "",
+      "gender": "boy",
+      "tags": [
+        "奶牛猫",
+        "调皮"
+      ],
+      "description": "一只活泼好动的奶牛猫"
+    },
+    "default": {
+      "name": "六一",
+      "birthday": "2019-06-01 00:00",
+      "gender": "boy",
+      "tags": [
+        "美短",
+        "粘人",
+        "小话唠"
+      ],
+      "description": "喜欢蹭手、追激光笔、吃饭前会喵喵叫。"
+    },
+    "cmtqqraj5": {
+      "name": "大米",
+      "birthday": "",
+      "gender": "girl",
+      "tags": [
+        "大米",
+        "小猫",
+        "陪伴",
+        "可爱"
+      ],
+      "description": "一只温柔可爱的小猫，安安静静地陪你在身边。"
+    }
+  },
+  "autoShowCats": [
+    "kele001"
+  ]
+}

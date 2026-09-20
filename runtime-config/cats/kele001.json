@@ -1,0 +1,159 @@
+{
+  "display": {
+    "size": 0.72,
+    "opacity": 1.0,
+    "alwaysOnTop": true,
+    "passthrough": false,
+    "follow": true,
+    "headOffset": {
+      "x": 0.0,
+      "y": 0.0
+    },
+    "idleReturnSec": 3.0
+  },
+  "menu": [
+    {
+      "id": "toggleFollow",
+      "actionId": "toggleFollow",
+      "label": "偷看"
+    },
+    {
+      "id": "togglePassthrough",
+      "actionId": "togglePassthrough",
+      "label": "穿透点击"
+    },
+    {
+      "id": "calibrate",
+      "actionId": "calibrate",
+      "label": "校准猫头"
+    },
+    {
+      "id": "offWork",
+      "actionId": "offWork",
+      "label": "去玩啦"
+    },
+    {
+      "id": "minimize",
+      "actionId": "minimize",
+      "label": "躲猫猫"
+    }
+  ],
+  "speakPhrases": [
+    {
+      "text": "喵~",
+      "weight": 1.0
+    },
+    {
+      "text": "戳我干嘛啦~",
+      "weight": 1.0
+    },
+    {
+      "text": "别碰我爪子！",
+      "weight": 1.0
+    },
+    {
+      "text": "我最可爱对不对~",
+      "weight": 1.0
+    },
+    {
+      "text": "给我吃的我就理你",
+      "weight": 1.0
+    },
+    {
+      "text": "嘿嘿，偷偷看你好久了",
+      "weight": 1.0
+    }
+  ],
+  "speakPhrasesDefault": [
+    {
+      "text": "喵~",
+      "weight": 1.0
+    },
+    {
+      "text": "戳我干嘛啦~",
+      "weight": 1.0
+    },
+    {
+      "text": "别碰我爪子！",
+      "weight": 1.0
+    },
+    {
+      "text": "我最可爱对不对~",
+      "weight": 1.0
+    },
+    {
+      "text": "给我吃的我就理你",
+      "weight": 1.0
+    },
+    {
+      "text": "嘿嘿，偷偷看你好久了",
+      "weight": 1.0
+    }
+  ],
+  "triggerBindings": {
+    "entries": [
+      {
+        "id": "m-leftClick",
+        "kind": "mouse",
+        "trigger": "leftClick",
+        "actionId": "pokeAndSpeak",
+        "phrases": [
+          {
+            "text": "喵~",
+            "weight": 1.0
+          },
+          {
+            "text": "今天也要开开心心的！",
+            "weight": 1.0
+          },
+          {
+            "text": "唱、跳、rap、篮球",
+            "weight": 1.0
+          },
+          {
+            "text": "我在偷偷看着你呢~",
+            "weight": 1.0
+          },
+          {
+            "text": "记得喝水哦，我会担心的！",
+            "weight": 1.0
+          },
+          {
+            "text": "陪你的时间永远都不够~",
+            "weight": 1.0
+          }
+        ]
+      },
+      {
+        "id": "m-doubleClick",
+        "kind": "mouse",
+        "trigger": "doubleClick",
+        "actionId": "minimize"
+      },
+      {
+        "id": "m-rightClick",
+        "kind": "mouse",
+        "trigger": "rightClick",
+        "actionId": "openMenu"
+      },
+      {
+        "id": "m-longPress",
+        "kind": "mouse",
+        "trigger": "longPress",
+        "actionId": ""
+      },
+      {
+        "id": "k-boss",
+        "kind": "key",
+        "trigger": "Alt+Z",
+        "actionId": "minimize",
+        "isGlobal": true
+      }
+    ]
+  },
+  "windowPos": {
+    "x": 1379,
+    "y": 526
+  },
+  "resourceRoot": "D:\\SEO\\发挥余热\\桌宠\\dmkl61-app\\res_v2\\kele"
+}

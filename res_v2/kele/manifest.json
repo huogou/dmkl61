@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "defaultBehavior": "idle",
+  "follow": {
+    "dir": "idle/breathe",
+    "clockwise": true,
+    "startAngle": 0
+  },
+  "actions": {
+    "idleBreathe": {
+      "dir": "idle/breathe",
+      "fps": 24,
+      "name": "待机呼吸",
+      "yoyo": true
+    },
+    "sleepBreathe": {
+      "dir": "sleep/breathe",
+      "fps": 12,
+      "name": "睡觉呼吸",
+      "yoyo": true
+    },
+    "lieDown": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "趴下"
+    },
+    "wakeUp": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "起床",
+      "reverse": true
+    },
+    "action2": {
+      "dir": "wark/base",
+      "fps": 24,
+      "name": "行走",
+      "yoyo": true,
+      "frames": [
+        "frame_0056.webp",
+        "frame_0057.webp",
+        "frame_0058.webp",
+        "frame_0059.webp",
+        "frame_0060.webp",
+        "frame_0061.webp",
+        "frame_0062.webp",
+        "frame_0063.webp",
+        "frame_0064.webp",
+        "frame_0065.webp",
+        "frame_0066.webp",
+        "frame_0067.webp",
+        "frame_0068.webp",
+        "frame_0069.webp",
+        "frame_0070.webp",
+        "frame_0071.webp",
+        "frame_0072.webp",
+        "frame_0073.webp",
+        "frame_0074.webp",
+        "frame_0075.webp",
+        "frame_0076.webp",
+        "frame_0077.webp",
+        "frame_0078.webp",
+        "frame_0079.webp",
+        "frame_0080.webp",
+        "frame_0081.webp",
+        "frame_0082.webp",
+        "frame_0083.webp",
+        "frame_0084.webp",
+        "frame_0085.webp",
+        "frame_0086.webp",
+        "frame_0087.webp",
+        "frame_0088.webp",
+        "frame_0089.webp",
+        "frame_0090.webp",
+        "frame_0091.webp",
+        "frame_0092.webp",
+        "frame_0093.webp",
+        "frame_0094.webp",
+        "frame_0095.webp",
+        "frame_0096.webp",
+        "frame_0097.webp",
+        "frame_0098.webp"
+      ],
+      "move": {
+        "loop": true,
+        "bounce": true,
+        "segments": [
+          {
+            "dir": 180,
+            "speed": 15,
+            "ms": 6000
+          }
+        ],
+        "facing": "left"
+      }
+    }
+  },
+  "behaviors": {
+    "idle": {
+      "weight": 12,
+      "duration": [
+        45000,
+        90000
+      ],
+      "base": "idleBreathe",
+      "random": [
+        {
+          "action": "__speak",
+          "weight": 0.5,
+          "phrases": [
+            {
+              "text": "喵~",
+              "weight": 1
+            },
+            {
+              "text": "戳我干嘛啦~",
+              "weight": 1
+            },
+            {
+              "text": "别碰我爪子！",
+              "weight": 1
+            },
+            {
+              "text": "我最可爱对不对~",
+              "weight": 1
+            },
+            {
+              "text": "给我吃的我就理你",
+              "weight": 1
+            },
+            {
+              "text": "嘿嘿，偷偷看你好久了",
+              "weight": 1
+            }
+          ],
+          "delay": [
+            15000,
+            30000
+          ]
+        }
+      ],
+      "delay": [
+        60000,
+        120000
+      ],
+      "name": "待机",
+      "interruptible": true
+    },
+    "sleep": {
+      "weight": 3,
+      "duration": [
+        90000,
+        180000
+      ],
+      "base": "sleepBreathe",
+      "random": [],
+      "delay": [
+        3000,
+        7000
+      ],
+      "name": "睡觉",
+      "enter": "lieDown",
+      "exit": "wakeUp"
+    },
+    "behavior2": {
+      "weight": 2,
+      "duration": [
+        25000,
+        60000
+      ],
+      "base": "action2",
+      "random": [],
+      "delay": [
+        3000,
+        8000
+      ],
+      "name": "溜达"
+    }
+  }
+}

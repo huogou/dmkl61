@@ -1,0 +1,302 @@
+{
+  "version": 1,
+  "defaultBehavior": "idle",
+  "follow": {
+    "dir": "follow",
+    "clockwise": true,
+    "startAngle": 0
+  },
+  "actions": {
+    "idleBreathe": {
+      "dir": "idle/breathe",
+      "fps": 24,
+      "name": "待机呼吸",
+      "yoyo": true
+    },
+    "sleepBreathe": {
+      "dir": "sleep/breathe",
+      "fps": 12,
+      "name": "睡觉呼吸",
+      "yoyo": true
+    },
+    "lieDown": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "趴下"
+    },
+    "wakeUp": {
+      "dir": "sleep/lieDown",
+      "fps": 24,
+      "name": "起床",
+      "reverse": true
+    },
+    "action1": {
+      "dir": "fly",
+      "fps": 24,
+      "name": "跳跃",
+      "offsetY": 0.188,
+      "scale": 1.45,
+      "move": {
+        "loop": true,
+        "bounce": true,
+        "segments": [
+          {
+            "dir": 315,
+            "speed": 120,
+            "ms": 2000
+          }
+        ]
+      }
+    },
+    "action2": {
+      "dir": "wark/base",
+      "fps": 24,
+      "name": "行走",
+      "move": {
+        "loop": true,
+        "bounce": true,
+        "segments": [
+          {
+            "dir": 180,
+            "speed": 80,
+            "ms": 2000
+          }
+        ],
+        "facing": "left"
+      }
+    }
+  },
+  "behaviors": {
+    "idle": {
+      "weight": 12,
+      "duration": [
+        45000,
+        90000
+      ],
+      "base": "idleBreathe",
+      "random": [
+        {
+          "action": "__speak",
+          "weight": 8,
+          "phrases": [
+            {
+              "text": "喵~",
+              "weight": 1.0
+            },
+            {
+              "text": "嗯？",
+              "weight": 1.0
+            },
+            {
+              "text": "你在忙吗？",
+              "weight": 1.0
+            },
+            {
+              "text": "我在这里呀~",
+              "weight": 1.0
+            },
+            {
+              "text": "看我一下嘛",
+              "weight": 1.0
+            },
+            {
+              "text": "陪你一会儿",
+              "weight": 1.0
+            },
+            {
+              "text": "今天也要开心呀",
+              "weight": 1.0
+            },
+            {
+              "text": "偷偷看你一眼",
+              "weight": 1.0
+            },
+            {
+              "text": "我来啦~",
+              "weight": 1.0
+            },
+            {
+              "text": "大米在这里",
+              "weight": 1.0
+            },
+            {
+              "text": "喵喵~",
+              "weight": 1.0
+            },
+            {
+              "text": "摸摸我",
+              "weight": 1.0
+            },
+            {
+              "text": "休息一下嘛",
+              "weight": 1.0
+            },
+            {
+              "text": "忙完了吗？",
+              "weight": 1.0
+            },
+            {
+              "text": "我陪你",
+              "weight": 1.0
+            },
+            {
+              "text": "看我嘛~",
+              "weight": 1.0
+            },
+            {
+              "text": "摸摸我呀",
+              "weight": 1.0
+            },
+            {
+              "text": "不理我吗？",
+              "weight": 1.0
+            },
+            {
+              "text": "我也想玩~",
+              "weight": 1.0
+            },
+            {
+              "text": "陪我一下嘛",
+              "weight": 1.0
+            },
+            {
+              "text": "再看一会儿嘛",
+              "weight": 1.0
+            },
+            {
+              "text": "我乖不乖？",
+              "weight": 1.0
+            },
+            {
+              "text": "喵呜~",
+              "weight": 1.0
+            },
+            {
+              "text": "你忙你的，我陪着你",
+              "weight": 1.0
+            },
+            {
+              "text": "别太累啦",
+              "weight": 1.0
+            },
+            {
+              "text": "我一直在这里呀",
+              "weight": 1.0
+            }
+          ]
+        },
+        {
+          "action": "__speak",
+          "weight": 0.8,
+          "phrases": [
+            {
+              "text": "我一直记得你呀",
+              "weight": 1.0
+            },
+            {
+              "text": "今天也陪你一会儿",
+              "weight": 1.0
+            },
+            {
+              "text": "大米来看看你",
+              "weight": 1.0
+            },
+            {
+              "text": "你记得我就好",
+              "weight": 1.0
+            }
+          ]
+        }
+      ],
+      "delay": [
+        60000,
+        120000
+      ],
+      "name": "待机",
+      "interruptible": true
+    },
+    "sleep": {
+      "weight": 3,
+      "duration": [
+        90000,
+        180000
+      ],
+      "base": "sleepBreathe",
+      "random": [
+        {
+          "action": "__speak",
+          "weight": 1,
+          "phrases": [
+            {
+              "text": "好困呀……",
+              "weight": 1.0
+            },
+            {
+              "text": "我先睡一会儿",
+              "weight": 1.0
+            },
+            {
+              "text": "你也早点休息",
+              "weight": 1.0
+            },
+            {
+              "text": "嘘……我睡啦",
+              "weight": 1.0
+            },
+            {
+              "text": "今天辛苦啦",
+              "weight": 1.0
+            },
+            {
+              "text": "陪你安静一会儿",
+              "weight": 1.0
+            },
+            {
+              "text": "晚安呀",
+              "weight": 1.0
+            },
+            {
+              "text": "呼……",
+              "weight": 1.0
+            }
+          ]
+        }
+      ],
+      "delay": [
+        90000,
+        180000
+      ],
+      "name": "睡觉",
+      "enter": "lieDown",
+      "exit": "wakeUp"
+    },
+    "behavior1": {
+      "weight": 1,
+      "duration": [
+        7000,
+        9000
+      ],
+      "base": "action1",
+      "random": [],
+      "delay": [
+        3000,
+        8000
+      ],
+      "name": "跳跃"
+    },
+    "behavior2": {
+      "weight": 2,
+      "duration": [
+        25000,
+        60000
+      ],
+      "base": "action2",
+      "random": [],
+      "delay": [
+        3000,
+        8000
+      ],
+      "name": "溜达"
+    }
+  }
+}

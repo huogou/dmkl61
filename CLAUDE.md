@@ -135,6 +135,8 @@ Custom `pet_*` commands must be implemented in a module and registered in `tauri
 
 ## External resources and manifest
 
+> **仓库同步约定（2026-09-20 起强制）**：本仓库不只存源码。`resources/`、`res_v2/`（大米/可乐正式素材）、`runtime-config/`（`~/.dmkl61` 配置模板）都必须随代码一起提交。新增猫、新素材、新文案/配置改动后，确认这些目录都已 `git add`，不允许只推源码不推素材，否则新电脑 clone 后跑不出猫。详见 `RESOURCES.md`。
+
 The app ships no sprite frames. Frames are loaded from each cat's `manifest.json` and the folders under that cat's resource root.
 
 Resource root is **per-cat**: each cat's `cats/<id>.json` carries its own `resourceRoot` (a behavior-layer field, see below). `resources::resource_root(app, cat_id)` resolves per cat:
