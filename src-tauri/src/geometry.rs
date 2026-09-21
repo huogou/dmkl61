@@ -232,3 +232,39 @@ pub fn pet_walk_bounds(window: tauri::Window, scale: f64) -> Result<WalkBounds, 
         max_y: max_y as f64 - content - off_y,
     })
 }
+
+
+/// 获取其他猫窗口位置（物理像素，左上角）。用于双猫打架距离检测。
+#[tauri::command]
+pub fn pet_other_cats_position(app: tauri::AppHandle, self_window: tauri::Window) -> Result<Vec<(String, f64, f64)>, String> {
+    let self_label = self_window.label();
+    let mut result = Vec::new();
+    for (label, win) in app.webview_windows() {
+        if label == self_label || !label.starts_with("cat-") { continue; }
+        if let Ok(pos) = win.outer_position() {
+            result.push((label.clone(), pos.x as f64, pos.y as f64));
+        }
+    }
+    Ok(result)
+}
+
+/// 双猫打架：隐藏其他猫窗口（融合打架）。
+#[tauri::command]
+pub fn pet_fight_hide_partner(app: tauri::AppHandle, self_window: tauri::Window) -> Result<(), String> {
+    let self_label = self_window.label();
+    for (label, win) in app.webview_windows() {
+        if label == self_label || !label.starts_with("cat-") { continue; }
+        win.hide().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// 双猫打架结束：显示其他猫窗口。
+#[tauri::command]
+pub fn pet_fight_show_partner(app: tauri::AppHandle, self_window: tauri::Window) -> Result<(), String> {
+    for (label, win) in app.webview_windows() {
+        if !label.starts_with("cat-") { continue; }
+        win.show().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}

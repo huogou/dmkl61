@@ -18,6 +18,7 @@
  */
 import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { getBehaviors, getDefaultBehavior } from './behaviors'
 import { getClip } from './clips'
@@ -212,6 +213,10 @@ export function useCatBrain(opts: BrainOptions): CatBrain {
   function goToBehavior(name: string, lead?: string) {
     const b = behaviors[name]
     if (!b) return
+    // 从打架行为切走时，恢复其他猫窗口显示
+    if (currentBehavior === 'behaviorFight' && name !== 'behaviorFight') {
+      void invoke('pet_fight_show_partner').catch(() => {})
+    }
     clearRotationTimer()
     // 转入新行为会先播当前行为的 exit；若 lead 恰好就是该 exit
     // （如 sleep.exit=wakeUp 时触发 wakeUp 动作），去重以免同一动作播两遍。
@@ -483,6 +488,32 @@ export function useCatBrain(opts: BrainOptions): CatBrain {
       scheduleRotation()
     }
     void loop() // 立即取首帧，随后按状态自适应重排
+    // 双猫打架检测：每 2 秒检查其他猫位置，距离近时触发 fight
+    let fightCooldown = 0
+    const fightTimer = window.setInterval(async () => {
+      if (disposed || opts.paused?.() || opts.frozen?.()) return
+      if (state.value.kind !== 'behavior') return
+      if (currentBehavior === 'behaviorFight') return // 已经在打
+      if (Date.now() < fightCooldown) return
+      if (!behaviors['behaviorFight']) return // 没有打架行为
+      try {
+        const others = await invoke<[string, number, number][]>('pet_other_cats_position')
+        const selfWin = await getCurrentWindow().outerPosition()
+        for (const [_label, ox, oy] of others) {
+          const dx = ox - selfWin.x
+          const dy = oy - selfWin.y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 200) { // 距离 < 200px 触发打架
+            goToBehavior('behaviorFight')
+            fightCooldown = Date.now() + 30000 // 打完 30 秒冷却
+            // 通知其他猫隐藏自己（双猫融合打架）
+            try { await invoke('pet_fight_hide_partner') } catch {}
+            break
+          }
+        }
+      } catch {}
+    }, 2000)
+    onUnmounted(() => window.clearInterval(fightTimer))
     try {
       unlisten = await listen<string>('pet-play-action', (e) => {
         if (typeof e.payload === 'string') trigger(e.payload)
