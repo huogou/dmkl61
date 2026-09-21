@@ -300,7 +300,12 @@ async function onCheck() {
       ElMessage.success('已是最新版本')
     }
   } catch (e) {
-    ElMessage.error(`检查失败：${e}`)
+    const msg = String(e)
+    if (msg.includes("404") || msg.includes("Not Found") || msg.includes("没有找到")) {
+      ElMessage.info("暂无新版本")
+    } else {
+      ElMessage.error(`检查失败：${e}`)
+    }
   } finally {
     checking.value = false
   }
