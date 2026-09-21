@@ -37,3 +37,4 @@ src/src/
 src-tauri/src/src/
 # 原版演示备份（已被 resources/ 与 res_v2 取代，勿入库）
 resources_original/
+src-tauri/.cargo/config.toml
