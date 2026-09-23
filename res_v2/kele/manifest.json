@@ -79,19 +79,7 @@
         "frame_0096.webp",
         "frame_0097.webp",
         "frame_0098.webp"
-      ],
-      "move": {
-        "loop": true,
-        "bounce": true,
-        "segments": [
-          {
-            "dir": 180,
-            "speed": 15,
-            "ms": 6000
-          }
-        ],
-        "facing": "left"
-      }
+      ]
     }
   },
   "behaviors": {

@@ -234,15 +234,23 @@ pub fn pet_walk_bounds(window: tauri::Window, scale: f64) -> Result<WalkBounds, 
 }
 
 
-/// 获取其他猫窗口位置（物理像素，左上角）。用于双猫打架距离检测。
+/// 获取其他猫窗口位置（物理像素，**窗口中心**）。用于双猫打架距离检测。
+/// 猫在窗口内水平居中、纵向贴底（见 content_box），故窗口中心 x 即猫中心 x；
+/// 同尺寸窗口之间中心 y 的差值等于猫中心 y 的差值（贴底偏移相互抵消），
+/// 因此用窗口中心计算距离等价于用猫中心计算，避免了原先「左上角 vs 左上角」
+/// 在大窗口下距离失真导致的未挨着也误触发。
 #[tauri::command]
 pub fn pet_other_cats_position(app: tauri::AppHandle, self_window: tauri::Window) -> Result<Vec<(String, f64, f64)>, String> {
     let self_label = self_window.label();
     let mut result = Vec::new();
     for (label, win) in app.webview_windows() {
         if label == self_label || !label.starts_with("cat-") { continue; }
-        if let Ok(pos) = win.outer_position() {
-            result.push((label.clone(), pos.x as f64, pos.y as f64));
+        if let (Ok(pos), Ok(size)) = (win.outer_position(), win.outer_size()) {
+            result.push((
+                label.clone(),
+                pos.x as f64 + size.width as f64 / 2.0,
+                pos.y as f64 + size.height as f64 / 2.0,
+            ));
         }
     }
     Ok(result)

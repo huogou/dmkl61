@@ -498,12 +498,21 @@ export function useCatBrain(opts: BrainOptions): CatBrain {
       if (!behaviors['behaviorFight']) return // 没有打架行为
       try {
         const others = await invoke<[string, number, number][]>('pet_other_cats_position')
-        const selfWin = await getCurrentWindow().outerPosition()
+        // 后端 pet_other_cats_position 已返回其他猫的窗口中心坐标；
+        // 自身同样取窗口中心（猫水平居中，窗口中心 x 即猫中心 x，同尺寸窗口间
+        // 贴底偏移相互抵消），保证两端口径一致，避免左上角距离失真误触发。
+        const selfWin = getCurrentWindow()
+        const [selfPos, selfSize] = await Promise.all([
+          selfWin.outerPosition(),
+          selfWin.outerSize(),
+        ])
+        const selfCx = selfPos.x + selfSize.width / 2
+        const selfCy = selfPos.y + selfSize.height / 2
         for (const [_label, ox, oy] of others) {
-          const dx = ox - selfWin.x
-          const dy = oy - selfWin.y
+          const dx = ox - selfCx
+          const dy = oy - selfCy
           const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 200) { // 距离 < 200px 触发打架
+          if (dist < 200) { // 窗口中心距离 < 200px 触发打架
             goToBehavior('behaviorFight')
             fightCooldown = Date.now() + 30000 // 打完 30 秒冷却
             // 通知其他猫隐藏自己（双猫融合打架）
